@@ -250,13 +250,15 @@ export default function StructurePage() {
                     </button>
                 </div>
 
-                {loading ? (
+                {loading && (
                     <div className="py-12 text-center text-sm text-[color:var(--muted)]">Loading...</div>
-                ) : filteredTree.children.length === 0 ? (
+                )}
+                {!loading && filteredTree.children.length === 0 && (
                     <div className="py-12 text-center text-sm text-[color:var(--muted)]">
                         {search ? "No matches found" : "No files found"}
                     </div>
-                ) : (
+                )}
+                {!loading && filteredTree.children.length > 0 && (
                     <div className="max-h-[70vh] overflow-auto font-mono text-sm">
                         {filteredTree.children.map((child, index) => (
                             <TreeItem
