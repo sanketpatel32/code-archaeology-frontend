@@ -9,12 +9,15 @@ import { useAnalysisState } from "@/lib/useAnalysisState";
 
 const NAV_LINKS = [
   { href: "/", label: "Overview" },
+  { href: "/structure", label: "Structure" },
   { href: "/timeline", label: "Timeline" },
+  { href: "/commits", label: "Commits" },
   { href: "/hotspots", label: "Hotspots" },
   { href: "/fragility", label: "Fragility" },
   { href: "/ownership", label: "Ownership" },
   { href: "/complexity", label: "Complexity" },
   { href: "/insights", label: "Insights" },
+  { href: "/help", label: "Help" },
 ];
 
 export default function DashboardNav() {

@@ -41,6 +41,7 @@ export default function HotspotsPage() {
   const [intensityMetric, setIntensityMetric] =
     useState<IntensityMetric>("score");
   const [limit, setLimit] = useState(25);
+  const [focusedPath, setFocusedPath] = useState<string | null>(null);
 
   useEffect(() => {
     if (!state.repoId) {
@@ -113,6 +114,12 @@ export default function HotspotsPage() {
   const formatIntensityValue = (value: number) =>
     intensityMetric === "score" ? formatScore(value) : formatNumber(value);
   const topHotspot = scoreSorted[0];
+  const focusedHotspot = useMemo(() => {
+    if (focusedPath) {
+      return scoreSorted.find((row) => row.file_path === focusedPath) ?? null;
+    }
+    return topHotspot ?? null;
+  }, [focusedPath, scoreSorted, topHotspot]);
   const tiles = useMemo(() => scoreSorted.slice(0, 12), [scoreSorted]);
   const barData = useMemo(
     () =>
@@ -304,18 +311,24 @@ export default function HotspotsPage() {
               {tiles.map((tile, index) => {
                 const tileName =
                   tile.file_path.split("/").slice(-1)[0] ?? tile.file_path;
+                const isFocused = focusedHotspot?.file_path === tile.file_path;
                 return (
-                  <div
+                  <button
                     key={tile.file_path}
-                    className="clamp-2 wrap-anywhere rounded-2xl px-4 py-5 text-center text-xs font-semibold uppercase leading-snug tracking-[0.2em] text-white shadow-md"
+                    type="button"
+                    className={`clamp-2 wrap-anywhere rounded-2xl px-4 py-5 text-center text-xs font-semibold uppercase leading-snug tracking-[0.2em] text-white shadow-md transition ${
+                      isFocused ? "ring-2 ring-white/70" : "hover:opacity-100"
+                    }`}
                     style={{
                       background: TILE_COLORS[index % TILE_COLORS.length],
                       opacity: 0.9,
                     }}
                     title={tile.file_path}
+                    aria-pressed={isFocused}
+                    onClick={() => setFocusedPath(tile.file_path)}
                   >
                     {tileName}
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -330,7 +343,7 @@ export default function HotspotsPage() {
           <h2 className="text-lg font-semibold text-[color:var(--foreground)]">
             Hotspot focus
           </h2>
-          {topHotspot ? (
+          {focusedHotspot ? (
             <div className="mt-4 grid gap-4 text-sm text-[color:var(--muted)]">
               <div className="panel-muted rounded-2xl px-4 py-3">
                 <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
@@ -338,9 +351,9 @@ export default function HotspotsPage() {
                 </div>
                 <div
                   className="truncate-1 mt-2 font-mono text-xs text-[color:var(--foreground)]"
-                  title={topHotspot.file_path}
+                  title={focusedHotspot.file_path}
                 >
-                  {topHotspot.file_path}
+                  {focusedHotspot.file_path}
                 </div>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
@@ -349,7 +362,7 @@ export default function HotspotsPage() {
                     Score
                   </div>
                   <div className="mt-2 text-lg font-semibold text-[color:var(--foreground)]">
-                    {formatScore(topHotspot.hotspot_score)}
+                    {formatScore(focusedHotspot.hotspot_score)}
                   </div>
                 </div>
                 <div className="panel-muted rounded-2xl px-4 py-3">
@@ -357,7 +370,7 @@ export default function HotspotsPage() {
                     Touches
                   </div>
                   <div className="mt-2 text-lg font-semibold text-[color:var(--foreground)]">
-                    {formatNumber(topHotspot.touches)}
+                    {formatNumber(focusedHotspot.touches)}
                   </div>
                 </div>
                 <div className="panel-muted rounded-2xl px-4 py-3">
@@ -365,7 +378,7 @@ export default function HotspotsPage() {
                     Churn
                   </div>
                   <div className="mt-2 text-lg font-semibold text-[color:var(--foreground)]">
-                    {formatNumber(topHotspot.churn)}
+                    {formatNumber(focusedHotspot.churn)}
                   </div>
                 </div>
               </div>

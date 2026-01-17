@@ -43,6 +43,13 @@ body {
   font-family: var(--font-sans);
 }
 
+button,
+a,
+summary,
+[role="button"] {
+  cursor: pointer;
+}
+
 .page {
   min-height: 100vh;
   padding: 3.5rem 1.5rem 5rem;
@@ -367,13 +374,13 @@ body {
 .stat-card {
   background: var(--panel-strong);
   border: 1px solid var(--border);
-  border-radius: 1.25rem;
-  padding: 1rem;
+  border-radius: 1rem;
+  padding: 0.875rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  min-height: 120px;
-  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.45);
+  gap: 0.35rem;
+  min-height: 100px;
+  box-shadow: 0 8px 20px rgba(2, 6, 23, 0.4);
 }
 
 .stat-label {
@@ -385,7 +392,7 @@ body {
 }
 
 .stat-value {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 600;
   color: var(--foreground);
 }
@@ -469,6 +476,9 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.18em;
   color: var(--muted);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .chart-tooltip-value {
@@ -531,6 +541,9 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.18em;
   color: var(--muted);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .treemap-tooltip-value {
@@ -668,6 +681,7 @@ body {
     opacity 0.15s ease,
     transform 0.15s ease,
     stroke 0.15s ease;
+  cursor: pointer;
 }
 
 .treemap-rect-active {
@@ -712,6 +726,7 @@ tbody tr:hover {
     opacity: 0;
     transform: translateY(14px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -722,9 +737,11 @@ tbody tr:hover {
   0% {
     box-shadow: 0 0 0 rgba(59, 130, 246, 0.2);
   }
+
   50% {
     box-shadow: 0 0 18px rgba(59, 130, 246, 0.35);
   }
+
   100% {
     box-shadow: 0 0 0 rgba(59, 130, 246, 0.2);
   }

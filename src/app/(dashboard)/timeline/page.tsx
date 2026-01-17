@@ -17,38 +17,73 @@ type TimelineBucket = {
 
 type ClassificationBucket = {
   bucket: string;
-  bugfix: number;
+  feat: number;
+  fix: number;
+  docs: number;
+  style: number;
   refactor: number;
-  feature: number;
-  maintenance: number;
+  perf: number;
+  test: number;
+  build: number;
+  ci: number;
+  revert: number;
   chore: number;
   unknown: number;
 };
 
+type BranchTimeline = {
+  name: string;
+  totalCommits: number;
+  weeks: Array<{ bucket: string; commit_count: number }>;
+};
+
+type BranchTimelineResponse = {
+  range: { start: string; end: string };
+  branches: BranchTimeline[];
+};
+
 type PulseMetric = "commits" | "churn" | "additions" | "deletions";
 type ClassificationMetric =
-  | "bugfix"
+  | "feat"
+  | "fix"
+  | "docs"
+  | "style"
   | "refactor"
-  | "feature"
-  | "maintenance"
+  | "perf"
+  | "test"
+  | "build"
+  | "ci"
+  | "revert"
   | "chore"
   | "unknown";
 type Tone = { label: string; bg: string; color: string };
 
 const CLASSIFICATION_LABELS: Record<ClassificationMetric, string> = {
-  bugfix: "Fixes",
-  refactor: "Refactors",
-  feature: "Features",
-  maintenance: "Maintenance",
-  chore: "Style/Chore",
+  feat: "Feat",
+  fix: "Fix",
+  docs: "Docs",
+  style: "Style",
+  refactor: "Refactor",
+  perf: "Perf",
+  test: "Test",
+  build: "Build",
+  ci: "CI",
+  revert: "Revert",
+  chore: "Chore",
   unknown: "Other",
 };
 
 const CLASSIFICATION_COLORS: Record<ClassificationMetric, string> = {
-  bugfix: "var(--risk)",
+  feat: "var(--signal)",
+  fix: "var(--risk)",
+  docs: "#38bdf8",
+  style: "#fbbf24",
   refactor: "var(--warning)",
-  feature: "var(--signal)",
-  maintenance: "var(--accent)",
+  perf: "#fb7185",
+  test: "#a3e635",
+  build: "#14b8a6",
+  ci: "#0ea5e9",
+  revert: "#f97316",
   chore: "#94a3b8",
   unknown: "#64748b",
 };
@@ -72,11 +107,24 @@ export default function TimelinePage() {
   const [classification, setClassification] = useState<ClassificationBucket[]>(
     [],
   );
+  const [branchTimeline, setBranchTimeline] = useState<BranchTimeline[]>([]);
+  const [branchRange, setBranchRange] = useState<BranchTimelineResponse["range"] | null>(null);
+  const [branchError, setBranchError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pulseMetric, setPulseMetric] = useState<PulseMetric>("commits");
   const [classificationMetric, setClassificationMetric] =
-    useState<ClassificationMetric>("bugfix");
+    useState<ClassificationMetric>("feat");
+  const [branchFocus, setBranchFocus] = useState<string>("");
+
+  useEffect(() => {
+    if (!branchTimeline.length) {
+      return;
+    }
+    if (!branchTimeline.find((branch) => branch.name === branchFocus)) {
+      setBranchFocus(branchTimeline[0]?.name ?? "");
+    }
+  }, [branchTimeline, branchFocus]);
 
   useEffect(() => {
     if (!state.repoId) {
@@ -97,6 +145,23 @@ export default function TimelinePage() {
         ]);
         setTimeline(timelineData);
         setClassification(classificationData);
+        try {
+          const branchData = await apiGet<BranchTimelineResponse>(
+            `/api/repositories/${state.repoId}/timeline-branches?weeks=24&limit=6`,
+          );
+          setBranchTimeline(branchData.branches);
+          setBranchRange(branchData.range);
+          setBranchFocus((current) => current || branchData.branches[0]?.name || "");
+          setBranchError(null);
+        } catch (branchErr) {
+          setBranchTimeline([]);
+          setBranchRange(null);
+          setBranchError(
+            branchErr instanceof Error
+              ? branchErr.message
+              : "Unable to load branch activity.",
+          );
+        }
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Unable to load timeline.",
@@ -221,18 +286,30 @@ export default function TimelinePage() {
     }
     const totals = classification.reduce(
       (acc, row) => ({
-        bugfix: acc.bugfix + row.bugfix,
+        feat: acc.feat + row.feat,
+        fix: acc.fix + row.fix,
+        docs: acc.docs + row.docs,
+        style: acc.style + row.style,
         refactor: acc.refactor + row.refactor,
-        feature: acc.feature + row.feature,
-        maintenance: acc.maintenance + row.maintenance,
+        perf: acc.perf + row.perf,
+        test: acc.test + row.test,
+        build: acc.build + row.build,
+        ci: acc.ci + row.ci,
+        revert: acc.revert + row.revert,
         chore: acc.chore + row.chore,
         unknown: acc.unknown + row.unknown,
       }),
       {
-        bugfix: 0,
+        feat: 0,
+        fix: 0,
+        docs: 0,
+        style: 0,
         refactor: 0,
-        feature: 0,
-        maintenance: 0,
+        perf: 0,
+        test: 0,
+        build: 0,
+        ci: 0,
+        revert: 0,
         chore: 0,
         unknown: 0,
       },
@@ -241,11 +318,13 @@ export default function TimelinePage() {
       (sum, value) => sum + value,
       0,
     );
-    return (Object.keys(totals) as ClassificationMetric[]).map((key) => {
-      const count = totals[key];
-      const percent = totalCount ? (count / totalCount) * 100 : 0;
-      return { key, count, percent };
-    });
+    return (Object.keys(totals) as ClassificationMetric[])
+      .map((key) => {
+        const count = totals[key];
+        const percent = totalCount ? (count / totalCount) * 100 : 0;
+        return { key, count, percent };
+      })
+      .sort((a, b) => b.count - a.count);
   }, [classification]);
 
   const classificationTrend = useMemo(() => {
@@ -255,6 +334,73 @@ export default function TimelinePage() {
       title: formatDate(row.bucket),
     }));
   }, [classification, classificationMetric]);
+
+  const activeClassification = useMemo(
+    () =>
+      classificationSummary.find((item) => item.key === classificationMetric) ??
+      null,
+    [classificationSummary, classificationMetric],
+  );
+
+  const latestClassification = useMemo(() => {
+    if (!classification.length) {
+      return null;
+    }
+    const last = classification[classification.length - 1];
+    return last ? last[classificationMetric] ?? 0 : null;
+  }, [classification, classificationMetric]);
+
+  const averageClassification = useMemo(() => {
+    if (!classificationTrend.length) {
+      return null;
+    }
+    const total = classificationTrend.reduce(
+      (sum, row) => sum + row.value,
+      0,
+    );
+    return total / classificationTrend.length;
+  }, [classificationTrend]);
+
+  const activeBranch = useMemo(() => {
+    if (!branchTimeline.length) {
+      return null;
+    }
+    return (
+      branchTimeline.find((branch) => branch.name === branchFocus) ??
+      branchTimeline[0]
+    );
+  }, [branchTimeline, branchFocus]);
+
+  const branchChartData = useMemo(() => {
+    if (!activeBranch) {
+      return [];
+    }
+    return activeBranch.weeks.map((row) => ({
+      label: formatDate(row.bucket),
+      value: row.commit_count,
+      title: formatDate(row.bucket),
+    }));
+  }, [activeBranch]);
+
+  const branchStats = useMemo(() => {
+    if (!activeBranch) {
+      return null;
+    }
+    const total = activeBranch.totalCommits;
+    const weeks = activeBranch.weeks.length || 1;
+    const average = total / weeks;
+    const peak = activeBranch.weeks.reduce(
+      (best, row) =>
+        row.commit_count > best.value
+          ? { bucket: row.bucket, value: row.commit_count }
+          : best,
+      {
+        bucket: activeBranch.weeks[0]?.bucket ?? "",
+        value: activeBranch.weeks[0]?.commit_count ?? 0,
+      },
+    );
+    return { total, average, peak };
+  }, [activeBranch]);
 
   if (!state.repoId) {
     return (
@@ -315,6 +461,10 @@ export default function TimelinePage() {
               ? formatNumber(Math.round(timelineStats.averageChurn))
               : "--"}{" "}
             per week
+          </span>
+          <span className="stat-meta">
+            Adds {formatNumber(timelineStats?.totalAdditions ?? 0)} / Deletes{" "}
+            {formatNumber(timelineStats?.totalDeletions ?? 0)}
           </span>
         </div>
         <div className="stat-card">
@@ -426,6 +576,95 @@ export default function TimelinePage() {
 
       <section
         className="soft-panel reveal rounded-3xl p-6"
+        style={{ animationDelay: "0.25s" }}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-[color:var(--foreground)]">
+              Branch activity
+            </h2>
+            <p className="mt-1 text-xs text-[color:var(--muted)]">
+              Compare weekly commit volume across the most active branches.
+            </p>
+          </div>
+          <div className="toggle-group">
+            {branchTimeline.map((branch) => (
+              <button
+                key={branch.name}
+                className={`toggle-button max-w-[160px] truncate-1 ${
+                  branchFocus === branch.name ? "toggle-active" : ""
+                }`}
+                type="button"
+                onClick={() => setBranchFocus(branch.name)}
+                title={branch.name}
+              >
+                {branch.name}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="mt-5 grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
+          <div className="panel-muted rounded-2xl p-4">
+            {branchChartData.length ? (
+              <div className="h-56">
+                <BarChart
+                  data={branchChartData}
+                  color="var(--accent)"
+                  formatValue={(value) => formatNumber(value)}
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-[color:var(--muted)]">
+                {loading
+                  ? "Loading branch activity..."
+                  : "No branch activity available."}
+              </p>
+            )}
+          </div>
+          <div className="panel-muted rounded-2xl p-4 text-sm text-[color:var(--muted)]">
+            <div className="flex items-center justify-between">
+              <span className="text-xs uppercase tracking-[0.2em]">Range</span>
+              <span className="text-[color:var(--foreground)]">
+                {formatDate(branchRange?.start ?? null)} -{" "}
+                {formatDate(branchRange?.end ?? null)}
+              </span>
+            </div>
+            <div className="mt-4 grid gap-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span>Total commits</span>
+                <span className="text-[color:var(--foreground)]">
+                  {branchStats ? formatNumber(branchStats.total) : "--"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Avg per week</span>
+                <span className="text-[color:var(--foreground)]">
+                  {branchStats
+                    ? formatNumber(Math.round(branchStats.average))
+                    : "--"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Peak week</span>
+                <span
+                  className="text-[color:var(--foreground)]"
+                  title={branchStats ? formatDate(branchStats.peak.bucket) : undefined}
+                >
+                  {branchStats ? formatNumber(branchStats.peak.value) : "--"}
+                </span>
+              </div>
+              {branchError ? (
+                <div className="alert-error rounded-xl px-3 py-2 text-xs">
+                  {branchError}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        className="soft-panel reveal rounded-3xl p-6"
         style={{ animationDelay: "0.3s" }}
       >
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -434,7 +673,7 @@ export default function TimelinePage() {
               Pulse explorer
             </h2>
             <p className="mt-1 text-xs text-[color:var(--muted)]">
-              Focus on commits or churn for the latest 12-week pulse.
+              Focus on commits, churn, or line movement for the latest pulse.
             </p>
           </div>
           <div className="toggle-group">
@@ -456,6 +695,24 @@ export default function TimelinePage() {
             >
               Churn
             </button>
+            <button
+              className={`toggle-button ${
+                pulseMetric === "additions" ? "toggle-active" : ""
+              }`}
+              type="button"
+              onClick={() => setPulseMetric("additions")}
+            >
+              Additions
+            </button>
+            <button
+              className={`toggle-button ${
+                pulseMetric === "deletions" ? "toggle-active" : ""
+              }`}
+              type="button"
+              onClick={() => setPulseMetric("deletions")}
+            >
+              Deletions
+            </button>
           </div>
         </div>
         {pulseData.length ? (
@@ -471,6 +728,117 @@ export default function TimelinePage() {
             {loading ? "Loading pulse data..." : "No pulse data available."}
           </p>
         )}
+      </section>
+
+      <section
+        className="soft-panel reveal rounded-3xl p-6"
+        style={{ animationDelay: "0.35s" }}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-[color:var(--foreground)]">
+              Change taxonomy
+            </h2>
+            <p className="mt-1 text-xs text-[color:var(--muted)]">
+              Track Conventional Commit types across the weekly timeline.
+            </p>
+          </div>
+          <div className="toggle-group">
+            {(Object.keys(CLASSIFICATION_LABELS) as ClassificationMetric[]).map(
+              (key) => (
+                <button
+                  key={key}
+                  className={`toggle-button ${
+                    classificationMetric === key ? "toggle-active" : ""
+                  }`}
+                  type="button"
+                  onClick={() => setClassificationMetric(key)}
+                >
+                  {CLASSIFICATION_LABELS[key]}
+                </button>
+              ),
+            )}
+          </div>
+        </div>
+        <div className="mt-5 grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
+          <div className="panel-muted rounded-2xl p-4 flex flex-col">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[color:var(--border)] pb-3 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              <span>Type trend</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="chip rounded-full px-3 py-1">
+                  {CLASSIFICATION_LABELS[classificationMetric]}
+                </span>
+                <span className="chip rounded-full px-3 py-1">
+                  Latest {formatNumber(latestClassification ?? 0)}
+                </span>
+                <span className="chip rounded-full px-3 py-1">
+                  Avg{" "}
+                  {averageClassification !== null
+                    ? formatNumber(Math.round(averageClassification))
+                    : "--"}
+                </span>
+              </div>
+            </div>
+            {classificationTrend.length ? (
+              <div className="flex flex-1 pt-4 min-h-[220px]">
+                <div className="h-full w-full">
+                  <BarChart
+                    data={classificationTrend}
+                    color={CLASSIFICATION_COLORS[classificationMetric]}
+                    formatValue={(value) => formatNumber(value)}
+                  />
+                </div>
+              </div>
+            ) : (
+              <p className="pt-4 text-sm text-[color:var(--muted)]">
+                {loading
+                  ? "Loading classification timeline..."
+                  : "No classification data yet."}
+              </p>
+            )}
+          </div>
+          <div className="panel-muted rounded-2xl p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs uppercase tracking-[0.2em]">
+                Distribution
+              </span>
+              <span className="text-xs text-[color:var(--muted)]">
+                {classificationSummary.length} types
+              </span>
+            </div>
+            <div className="mt-3 text-xs text-[color:var(--muted)]">
+              {activeClassification
+                ? `${CLASSIFICATION_LABELS[activeClassification.key]} holds ${Math.round(
+                    activeClassification.percent,
+                  )}% (${formatNumber(activeClassification.count)} commits)`
+                : "Select a type to see its distribution share."}
+            </div>
+            <div className="mt-4 metric-list">
+              {classificationSummary.map((item) => (
+                <div className="metric-row" key={item.key}>
+                  <div className="metric-label">
+                    {CLASSIFICATION_LABELS[item.key]}
+                  </div>
+                  <div className="metric-bar">
+                    <span
+                      className="metric-bar-fill"
+                      style={{
+                        width: `${item.percent}%`,
+                        background: CLASSIFICATION_COLORS[item.key],
+                      }}
+                    />
+                  </div>
+                  <div
+                    className="metric-value"
+                    title={`${item.count} commits`}
+                  >
+                    {Math.round(item.percent)}%
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </section>
     </>
   );

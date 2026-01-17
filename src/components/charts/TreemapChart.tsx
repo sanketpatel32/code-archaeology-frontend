@@ -13,6 +13,8 @@ export type TreemapNode = {
 type TreemapChartProps = {
   data: TreemapNode;
   height?: number;
+  selectedPath?: string | null;
+  onSelect?: (path: string) => void;
 };
 
 const TREEMAP_COLORS = [
@@ -30,6 +32,8 @@ const formatValue = (value: number) => value.toLocaleString("en-US");
 export default function TreemapChart({
   data,
   height = 320,
+  selectedPath = null,
+  onSelect,
 }: TreemapChartProps) {
   const width = 640;
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -102,12 +106,16 @@ export default function TreemapChart({
           const tileHeight = leaf.y1 - leaf.y0;
           const showLabel = tileWidth > 110 && tileHeight > 44;
           const isActive = activeIndex === index;
+          const isSelected = selectedPath === leaf.path;
           const maxChars = Math.max(6, Math.floor(tileWidth / 9));
           const safeChars = Math.max(4, maxChars);
           const displayLabel =
             leaf.name.length > safeChars
               ? `${leaf.name.slice(0, safeChars - 3)}...`
               : leaf.name;
+          const isDimmed = activeLeaf
+            ? !isActive && !isSelected
+            : false;
 
           return (
             <g
@@ -116,12 +124,17 @@ export default function TreemapChart({
             >
               <rect
                 className={`treemap-rect ${
-                  activeLeaf && !isActive ? "treemap-rect-dim" : ""
-                } ${isActive ? "treemap-rect-active" : ""}`}
+                  isDimmed ? "treemap-rect-dim" : ""
+                } ${isActive || isSelected ? "treemap-rect-active" : ""}`}
                 width={tileWidth}
                 height={tileHeight}
                 rx={10}
                 fill={leaf.color}
+                onClick={() => {
+                  if (onSelect && leaf.path) {
+                    onSelect(leaf.path);
+                  }
+                }}
               />
               {showLabel ? (
                 <text className="treemap-label" x={10} y={20}>

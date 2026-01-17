@@ -245,7 +245,7 @@ export default function OwnershipPage() {
     const highCount = shares.filter((value) => value >= 0.7).length;
     const topRisk = busFactor.reduce((top, row) =>
       toNumber(row.contribution_share) >
-      toNumber(top.contribution_share)
+        toNumber(top.contribution_share)
         ? row
         : top,
     );
@@ -255,10 +255,10 @@ export default function OwnershipPage() {
     const normalized = query.trim().toLowerCase();
     const base = normalized
       ? shareSorted.filter(
-          (row) =>
-            row.file_path.toLowerCase().includes(normalized) ||
-            row.contributor_name.toLowerCase().includes(normalized),
-        )
+        (row) =>
+          row.file_path.toLowerCase().includes(normalized) ||
+          row.contributor_name.toLowerCase().includes(normalized),
+      )
       : shareSorted;
 
     return [...base].sort((a, b) => {
@@ -482,9 +482,9 @@ export default function OwnershipPage() {
               ) : null}
             </div>
           </div>
-          <div className="mt-4 overflow-x-auto">
+          <div className="mt-4 max-h-[400px] overflow-y-auto overflow-x-auto">
             <table className="min-w-full text-left text-sm text-[color:var(--muted)]">
-              <thead>
+              <thead className="sticky top-0 bg-[color:var(--background)]">
                 <tr className="border-b border-[color:var(--border)] text-xs uppercase tracking-[0.2em]">
                   <th className="px-3 py-2">File</th>
                   <th className="px-3 py-2">Owner</th>
@@ -495,10 +495,10 @@ export default function OwnershipPage() {
               <tbody>
                 {displayedOwnership.length ? (
                   displayedOwnership.map((row) => (
-                  <tr
-                    key={row.file_path}
-                    className="border-b border-[color:var(--border)]/60"
-                  >
+                    <tr
+                      key={row.file_path}
+                      className="border-b border-[color:var(--border)]/60"
+                    >
                       <td className="px-3 py-3 font-mono text-xs text-[color:var(--foreground)]">
                         <span
                           className="table-cell-truncate truncate-1"
@@ -601,37 +601,37 @@ export default function OwnershipPage() {
                     {topOwner.file_path}
                   </div>
                 </div>
-              <div className="panel-muted rounded-2xl px-4 py-3">
-                <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Dominant owner
+                <div className="panel-muted rounded-2xl px-4 py-3">
+                  <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    Dominant owner
+                  </div>
+                  <div className="mt-2 text-lg font-semibold text-[color:var(--foreground)]">
+                    {topOwner.contributor_name}
+                  </div>
+                  <div className="mt-2 text-xs text-[color:var(--muted)]">
+                    {formatScore(toNumber(topOwner.contribution_share) * 100)}%
+                    share of changes
+                  </div>
                 </div>
-                <div className="mt-2 text-lg font-semibold text-[color:var(--foreground)]">
-                  {topOwner.contributor_name}
-                </div>
-                <div className="mt-2 text-xs text-[color:var(--muted)]">
-                  {formatScore(toNumber(topOwner.contribution_share) * 100)}%
-                  share of changes
+                <div className="panel-muted rounded-2xl px-4 py-3">
+                  <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    Activity
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-xs text-[color:var(--muted)]">
+                    <span>Touches</span>
+                    <span className="text-[color:var(--foreground)]">
+                      {formatNumber(topOwner.touches)}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-xs text-[color:var(--muted)]">
+                    <span>Churn</span>
+                    <span className="text-[color:var(--foreground)]">
+                      {formatNumber(topOwner.churn)}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="panel-muted rounded-2xl px-4 py-3">
-                <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Activity
-                </div>
-                <div className="mt-2 flex items-center justify-between text-xs text-[color:var(--muted)]">
-                  <span>Touches</span>
-                  <span className="text-[color:var(--foreground)]">
-                    {formatNumber(topOwner.touches)}
-                  </span>
-                </div>
-                <div className="mt-2 flex items-center justify-between text-xs text-[color:var(--muted)]">
-                  <span>Churn</span>
-                  <span className="text-[color:var(--foreground)]">
-                    {formatNumber(topOwner.churn)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ) : (
+            ) : (
               <p className="mt-4 text-sm text-[color:var(--muted)]">
                 {loading ? "Loading focus..." : "No ownership focus available."}
               </p>
@@ -668,7 +668,7 @@ export default function OwnershipPage() {
             </span>
           </div>
         </div>
-            {busFactorStats?.topRisk ? (
+        {busFactorStats?.topRisk ? (
           <div className="panel-muted mt-4 grid gap-2 rounded-2xl p-4 text-sm text-[color:var(--muted)]">
             <div className="text-xs uppercase tracking-[0.2em]">
               Highest exposure

@@ -145,6 +145,7 @@ export default function OverviewPage() {
   const [metricsLoaded, setMetricsLoaded] = useState(false);
   const [activityFocus, setActivityFocus] =
     useState<ActivityFocus>("commits");
+  const [focusPath, setFocusPath] = useState<string | null>(null);
 
   const repoLabel = formatRepoLabel(state.repoUrl);
   const sortedHotspots = useMemo(
@@ -156,6 +157,12 @@ export default function OverviewPage() {
     [hotspots],
   );
   const topHotspot = sortedHotspots[0];
+  const focusedHotspot = useMemo(() => {
+    if (focusPath) {
+      return sortedHotspots.find((row) => row.file_path === focusPath) ?? null;
+    }
+    return topHotspot ?? null;
+  }, [focusPath, sortedHotspots, topHotspot]);
   const treemapData = useMemo(
     () => buildTreemapData(sortedHotspots.slice(0, 70)),
     [sortedHotspots],
@@ -193,6 +200,7 @@ export default function OverviewPage() {
   useEffect(() => {
     if (state.repoId) {
       setMetricsLoaded(false);
+      setFocusPath(null);
     }
   }, [state.repoId]);
 
@@ -385,9 +393,9 @@ export default function OverviewPage() {
 
     try {
       const payload: { repoUrl: string; branch?: string; maxCommits?: number } =
-        {
-          repoUrl,
-        };
+      {
+        repoUrl,
+      };
 
       if (branch.trim()) {
         payload.branch = branch.trim();
@@ -420,10 +428,9 @@ export default function OverviewPage() {
 
   return (
     <>
-      <header className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-        <div className="reveal flex flex-col gap-6">
+      <header className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="reveal flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-            <span className="chip rounded-full px-3 py-1">Executive</span>
             <span className="chip rounded-full px-3 py-1">
               {repoLabel ?? "No repo selected"}
             </span>
@@ -434,162 +441,102 @@ export default function OverviewPage() {
             </span>
           </div>
 
-          <div className="space-y-4">
-            <h1 className="text-4xl font-semibold leading-tight tracking-tight text-[color:var(--foreground)] sm:text-5xl">
-              Executive repository overview
+          <div className="space-y-2">
+            <h1 className="text-3xl font-semibold leading-tight tracking-tight text-[color:var(--foreground)] sm:text-4xl">
+              Repository overview
             </h1>
-            <div className="grid gap-3 border-l border-[color:var(--border)] pl-4">
-              <p className="max-w-xl text-sm text-[color:var(--muted)]">
-                Track delivery tempo, risk exposure, and structural drift with
-                a decision-ready summary.
-              </p>
-              <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                <span className="chip rounded-full px-3 py-1">Churn</span>
-                <span className="chip rounded-full px-3 py-1">Ownership</span>
-                <span className="chip rounded-full px-3 py-1">Complexity</span>
-              </div>
-            </div>
+            <p className="text-sm text-[color:var(--muted)]">
+              Track delivery tempo, risk exposure, and structural drift.
+            </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="stat-card">
-              <div className="flex items-center justify-between">
-                <span className="stat-label">Delivery tempo</span>
-                {tempoTone ? (
+          <div className="panel-muted rounded-2xl p-3">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  <span>Delivery tempo</span>
+                  {tempoTone ? (
+                    <span
+                      className="rounded-full px-2 py-1 text-[10px] uppercase tracking-[0.2em]"
+                      style={{
+                        background: tempoTone.bg,
+                        color: tempoTone.color,
+                      }}
+                    >
+                      {tempoTone.label}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="text-2xl font-semibold text-[color:var(--foreground)]">
+                  {timelineStats?.averageCommits
+                    ? formatNumber(Math.round(timelineStats.averageCommits))
+                    : "--"}
+                </div>
+                <div className="text-xs text-[color:var(--muted)]">
+                  Avg commits / week
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  Change load
+                </div>
+                <div className="text-2xl font-semibold text-[color:var(--foreground)]">
+                  {timelineStats ? formatNumber(timelineStats.totalChurn) : "--"}
+                </div>
+                <div className="text-xs text-[color:var(--muted)]">
+                  {churnPerCommit !== null
+                    ? `${formatNumber(Math.round(churnPerCommit))} churn/commit`
+                    : "Churn per commit"}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  <span>Risk index</span>
                   <span
                     className="rounded-full px-2 py-1 text-[10px] uppercase tracking-[0.2em]"
                     style={{
-                      background: tempoTone.bg,
-                      color: tempoTone.color,
+                      background: riskTone.bg,
+                      color: riskTone.color,
                     }}
                   >
-                    {tempoTone.label}
+                    {riskTone.label}
                   </span>
-                ) : null}
+                </div>
+                <div className="text-2xl font-semibold text-[color:var(--foreground)]">
+                  {topHotspot ? formatNumber(riskIndex) : "--"}
+                </div>
+                <div className="text-xs text-[color:var(--muted)]">
+                  Top hotspot score{" "}
+                  {topHotspot ? formatScore(topHotspot.hotspot_score) : "--"}
+                </div>
               </div>
-              <span className="stat-value">
-                {timelineStats?.averageCommits
-                  ? formatNumber(Math.round(timelineStats.averageCommits))
-                  : "--"}
-              </span>
-              <span className="stat-meta">Avg commits per week</span>
-            </div>
-            <div className="stat-card">
-              <span className="stat-label">Change load</span>
-              <span className="stat-value">
-                {timelineStats ? formatNumber(timelineStats.totalChurn) : "--"}
-              </span>
-              <span className="stat-meta">
-                {churnPerCommit !== null
-                  ? `${formatNumber(Math.round(churnPerCommit))} churn/commit`
-                  : "Churn per commit"}
-              </span>
-            </div>
-            <div className="stat-card">
-              <div className="flex items-center justify-between">
-                <span className="stat-label">Risk index</span>
-                <span
-                  className="rounded-full px-2 py-1 text-[10px] uppercase tracking-[0.2em]"
-                  style={{
-                    background: riskTone.bg,
-                    color: riskTone.color,
-                  }}
-                >
-                  {riskTone.label}
-                </span>
-              </div>
-              <span className="stat-value">
-                {topHotspot ? formatNumber(riskIndex) : "--"}
-              </span>
-              <span className="stat-meta">
-                Top hotspot score{" "}
-                {topHotspot ? formatScore(topHotspot.hotspot_score) : "--"}
-              </span>
             </div>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="panel-muted rounded-2xl p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs uppercase tracking-[0.2em]">
-                  Executive brief
-                </span>
-                <span className="text-xs text-[color:var(--muted)]">
-                  Latest snapshot
-                </span>
-              </div>
-              <div className="mt-4 grid gap-3 text-sm text-[color:var(--muted)]">
-                {executiveHighlights.map((item) => (
-                  <div
-                    key={item.label}
-                    className="flex flex-wrap items-center justify-between gap-3"
-                  >
-                    <div>
-                      <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                        {item.label}
-                      </div>
-                      <div
-                        className="truncate-1 mt-1 text-sm text-[color:var(--foreground)]"
-                        title={item.title}
-                      >
-                        {item.value}
-                      </div>
-                    </div>
-                    <div className="text-xs text-[color:var(--muted)]">
-                      {item.meta}
-                    </div>
-                  </div>
-                ))}
-              </div>
+          <div className="panel-muted rounded-2xl px-4 py-3 text-xs text-[color:var(--muted)]">
+            <div className="flex items-center justify-between">
+              <span className="text-xs uppercase tracking-[0.2em]">
+                Run status
+              </span>
+              <span
+                className={`status-chip inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${statusTone.className}`}
+              >
+                {statusTone.label}
+              </span>
             </div>
-            <div className="panel-muted rounded-2xl p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs uppercase tracking-[0.2em]">
-                  Risk watchlist
-                </span>
-                <span className="text-xs text-[color:var(--muted)]">Top 3</span>
-              </div>
-              <div className="mt-4 grid gap-3 text-sm text-[color:var(--muted)]">
-                {riskWatchlist.length ? (
-                  riskWatchlist.map((item) => (
-                    <div
-                      key={item.file}
-                      className="flex items-center justify-between gap-3"
-                    >
-                      <div>
-                        <div
-                          className="truncate-1 text-sm text-[color:var(--foreground)]"
-                          title={item.file}
-                        >
-                          {item.name}
-                        </div>
-                        <div className="text-xs text-[color:var(--muted)]">
-                          Score {item.score}
-                        </div>
-                      </div>
-                      <span
-                        className="rounded-full px-2 py-1 text-[10px] uppercase tracking-[0.2em]"
-                        style={{
-                          background: item.tone.bg,
-                          color: item.tone.color,
-                        }}
-                      >
-                        {item.tone.label}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-xs text-[color:var(--muted)]">
-                    Run an analysis to build a risk list.
-                  </p>
-                )}
-              </div>
+            <div className="mt-3 flex flex-wrap gap-3 text-[10px] uppercase tracking-[0.2em]">
+              <span className="chip rounded-full px-3 py-1">
+                Run {state.runId ? state.runId.slice(0, 8) : "--"}
+              </span>
+              <span className="chip rounded-full px-3 py-1">
+                Repo {state.repoId ? state.repoId.slice(0, 8) : "--"}
+              </span>
             </div>
           </div>
         </div>
 
         <section
-          className="soft-panel reveal rounded-3xl p-8"
+          className="soft-panel reveal rounded-3xl p-5"
           style={{ animationDelay: "0.1s" }}
         >
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -597,8 +544,8 @@ export default function OverviewPage() {
               <h2 className="text-lg font-semibold text-[color:var(--foreground)]">
                 Action center
               </h2>
-              <p className="mt-2 text-xs text-[color:var(--muted)]">
-                Launch a fresh scan and record the latest signal.
+              <p className="mt-1 text-xs text-[color:var(--muted)]">
+                Launch a fresh scan and refresh the signal.
               </p>
             </div>
             <span className="chip rounded-full px-3 py-1 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
@@ -616,29 +563,34 @@ export default function OverviewPage() {
                 required
               />
             </label>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="flex flex-col gap-2 text-sm font-medium text-[color:var(--muted)]">
-                Branch
-                <input
-                  className="input-field rounded-2xl px-4 py-3 text-base outline-none"
-                  placeholder="main (optional)"
-                  value={branch}
-                  onChange={(event) => setBranch(event.target.value)}
-                />
-              </label>
-              <label className="flex flex-col gap-2 text-sm font-medium text-[color:var(--muted)]">
-                Max commits
-                <input
-                  className="input-field rounded-2xl px-4 py-3 text-base outline-none"
-                  placeholder="5000 (optional)"
-                  value={maxCommits}
-                  onChange={(event) => setMaxCommits(event.target.value)}
-                  inputMode="numeric"
-                />
-              </label>
-            </div>
+            <details className="panel-muted rounded-2xl px-4 py-3 text-sm text-[color:var(--muted)]">
+              <summary className="cursor-pointer text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Advanced options
+              </summary>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <label className="flex flex-col gap-2 text-sm font-medium text-[color:var(--muted)]">
+                  Branch
+                  <input
+                    className="input-field rounded-2xl px-4 py-3 text-base outline-none"
+                    placeholder="main (optional)"
+                    value={branch}
+                    onChange={(event) => setBranch(event.target.value)}
+                  />
+                </label>
+                <label className="flex flex-col gap-2 text-sm font-medium text-[color:var(--muted)]">
+                  Max commits
+                  <input
+                    className="input-field rounded-2xl px-4 py-3 text-base outline-none"
+                    placeholder="5000 (optional)"
+                    value={maxCommits}
+                    onChange={(event) => setMaxCommits(event.target.value)}
+                    inputMode="numeric"
+                  />
+                </label>
+              </div>
+            </details>
             <button
-              className="button-primary mt-2 inline-flex items-center justify-center rounded-2xl px-6 py-3 text-base font-semibold"
+              className="button-primary mt-1 inline-flex items-center justify-center rounded-2xl px-6 py-3 text-base font-semibold"
               style={{
                 animation: loading
                   ? undefined
@@ -651,35 +603,11 @@ export default function OverviewPage() {
             </button>
           </form>
 
-          <div className="panel-dashed mt-6 grid gap-3 rounded-2xl p-4 text-sm text-[color:var(--muted)]">
-            <div className="flex items-center justify-between">
-              <span>Run status</span>
-              <span
-                className={`status-chip inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${statusTone.className}`}
-              >
-                {statusTone.label}
-              </span>
+          {error ? (
+            <div className="alert-error mt-4 rounded-xl px-3 py-2 text-xs">
+              {error}
             </div>
-            <div className="grid gap-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span>Run ID</span>
-                <span className="truncate font-mono text-[color:var(--foreground)]">
-                  {state.runId ?? "--"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Repo ID</span>
-                <span className="truncate font-mono text-[color:var(--foreground)]">
-                  {state.repoId ?? "--"}
-                </span>
-              </div>
-            </div>
-            {error ? (
-              <div className="alert-error rounded-xl px-3 py-2 text-xs">
-                {error}
-              </div>
-            ) : null}
-          </div>
+          ) : null}
         </section>
       </header>
 
@@ -699,9 +627,8 @@ export default function OverviewPage() {
           <div className="flex flex-wrap items-center gap-3">
             <div className="toggle-group">
               <button
-                className={`toggle-button ${
-                  activityFocus === "commits" ? "toggle-active" : ""
-                }`}
+                className={`toggle-button ${activityFocus === "commits" ? "toggle-active" : ""
+                  }`}
                 type="button"
                 aria-pressed={activityFocus === "commits"}
                 onClick={() => setActivityFocus("commits")}
@@ -709,9 +636,8 @@ export default function OverviewPage() {
                 Commits
               </button>
               <button
-                className={`toggle-button ${
-                  activityFocus === "churn" ? "toggle-active" : ""
-                }`}
+                className={`toggle-button ${activityFocus === "churn" ? "toggle-active" : ""
+                  }`}
                 type="button"
                 aria-pressed={activityFocus === "churn"}
                 onClick={() => setActivityFocus("churn")}
@@ -734,29 +660,32 @@ export default function OverviewPage() {
             {timeline.length ? (
               <>
                 <div
-                  className={`h-64 ${
-                    activityFocus === "churn"
-                      ? "activity-focus-churn"
-                      : "activity-focus-commits"
-                  }`}
+                  className={`h-64 ${activityFocus === "churn"
+                    ? "activity-focus-churn"
+                    : "activity-focus-commits"
+                    }`}
                 >
-                  <TimelineChart data={timeline} />
+                  <TimelineChart data={timeline} focus={activityFocus} />
                 </div>
                 <div className="mt-4 flex flex-wrap gap-4 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  <span className="inline-flex items-center gap-2">
-                    <span
-                      className="h-2 w-2 rounded-full"
-                      style={{ background: "var(--accent)" }}
-                    />
-                    Commits
-                  </span>
-                  <span className="inline-flex items-center gap-2">
-                    <span
-                      className="h-2 w-2 rounded-full"
-                      style={{ background: "var(--signal)" }}
-                    />
-                    Churn
-                  </span>
+                  {activityFocus !== "churn" ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        className="h-2 w-2 rounded-full"
+                        style={{ background: "var(--accent)" }}
+                      />
+                      Commits
+                    </span>
+                  ) : null}
+                  {activityFocus !== "commits" ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        className="h-2 w-2 rounded-full"
+                        style={{ background: "var(--signal)" }}
+                      />
+                      Churn
+                    </span>
+                  ) : null}
                 </div>
               </>
             ) : (
@@ -865,49 +794,55 @@ export default function OverviewPage() {
         </div>
         <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
           <div className="panel-muted rounded-2xl p-4">
-            {sortedHotspots.length ? (
-              <div className="h-72">
-                <TreemapChart data={treemapData} />
-              </div>
-            ) : (
+              {sortedHotspots.length ? (
+                <div className="h-72">
+                  <TreemapChart
+                    data={treemapData}
+                    selectedPath={focusPath}
+                    onSelect={(path) =>
+                      setFocusPath((prev) => (prev === path ? null : path))
+                    }
+                  />
+                </div>
+              ) : (
               <p className="text-sm text-[color:var(--muted)]">
                 Run an analysis to build the hotspot map.
               </p>
             )}
           </div>
           <div className="panel-muted grid gap-3 rounded-2xl p-4 text-sm text-[color:var(--muted)]">
-            <div>
-              <span className="text-xs uppercase tracking-[0.2em]">
-                Focus file
-              </span>
-              <div
-                className="truncate-1 mt-2 font-mono text-xs text-[color:var(--foreground)]"
-                title={topHotspot?.file_path ?? ""}
-              >
-                {topHotspot?.file_path ?? "--"}
+              <div>
+                <span className="text-xs uppercase tracking-[0.2em]">
+                  Focus file
+                </span>
+                <div
+                  className="truncate-1 mt-2 font-mono text-xs text-[color:var(--foreground)]"
+                  title={focusedHotspot?.file_path ?? ""}
+                >
+                  {focusedHotspot?.file_path ?? "--"}
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-[0.2em]">Score</span>
+                <span className="text-[color:var(--foreground)]">
+                  {formatScore(focusedHotspot?.hotspot_score ?? null)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-[0.2em]">
+                  Touches
+                </span>
+                <span className="text-[color:var(--foreground)]">
+                  {formatNumber(focusedHotspot?.touches ?? 0)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-[0.2em]">Churn</span>
+                <span className="text-[color:var(--foreground)]">
+                  {formatNumber(focusedHotspot?.churn ?? 0)}
+                </span>
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-[0.2em]">Score</span>
-              <span className="text-[color:var(--foreground)]">
-                {formatScore(topHotspot?.hotspot_score ?? null)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-[0.2em]">
-                Touches
-              </span>
-              <span className="text-[color:var(--foreground)]">
-                {formatNumber(topHotspot?.touches ?? 0)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-[0.2em]">Churn</span>
-              <span className="text-[color:var(--foreground)]">
-                {formatNumber(topHotspot?.churn ?? 0)}
-              </span>
-            </div>
-          </div>
         </div>
       </section>
 

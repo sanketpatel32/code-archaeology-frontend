@@ -19,11 +19,13 @@ type ChartPoint = {
 type TimelineChartProps = {
   data: TimelineDatum[];
   height?: number;
+  focus?: "commits" | "churn" | "both";
 };
 
 export default function TimelineChart({
   data,
   height = 240,
+  focus = "both",
 }: TimelineChartProps) {
   const width = 640;
   const padding = { top: 16, right: 24, bottom: 28, left: 24 };
@@ -46,9 +48,19 @@ export default function TimelineChart({
     );
   }
 
+  const showCommits = focus !== "churn";
+  const showChurn = focus !== "commits";
   const maxValue = Math.max(
     1,
-    max(points, (point) => Math.max(point.commits, point.churn)) ?? 1,
+    max(points, (point) => {
+      if (focus === "commits") {
+        return point.commits;
+      }
+      if (focus === "churn") {
+        return point.churn;
+      }
+      return Math.max(point.commits, point.churn);
+    }) ?? 1,
   );
 
   const x = scaleLinear()
@@ -89,7 +101,10 @@ export default function TimelineChart({
   const churnPath = lineGenerator(churnSeries) ?? "";
   const churnArea = areaGenerator(churnSeries) ?? "";
 
-  const lastPoint = commitSeries[commitSeries.length - 1];
+  const lastPoint =
+    (focus === "churn" ? churnSeries : commitSeries)[
+      commitSeries.length - 1
+    ];
   const hoverCommit = hoverIndex !== null ? commitSeries[hoverIndex] : null;
   const hoverChurn = hoverIndex !== null ? churnSeries[hoverIndex] : null;
   const hoverBucket = hoverIndex !== null ? data[hoverIndex]?.bucket : null;
@@ -139,9 +154,13 @@ export default function TimelineChart({
             />
           ))}
         </g>
-        <path className="chart-area" d={churnArea} />
-        <path className="chart-line chart-line-churn" d={churnPath} />
-        <path className="chart-line chart-line-commits" d={commitPath} />
+        {showChurn ? <path className="chart-area" d={churnArea} /> : null}
+        {showChurn ? (
+          <path className="chart-line chart-line-churn" d={churnPath} />
+        ) : null}
+        {showCommits ? (
+          <path className="chart-line chart-line-commits" d={commitPath} />
+        ) : null}
         {hoverIndex !== null ? (
           <line
             className="chart-hover-line"
@@ -151,7 +170,7 @@ export default function TimelineChart({
             y2={height - padding.bottom}
           />
         ) : null}
-        {hoverCommit ? (
+        {showCommits && hoverCommit ? (
           <circle
             cx={x(hoverCommit.index)}
             cy={y(hoverCommit.value)}
@@ -159,7 +178,7 @@ export default function TimelineChart({
             className="chart-dot chart-dot-commits"
           />
         ) : null}
-        {hoverChurn ? (
+        {showChurn && hoverChurn ? (
           <circle
             cx={x(hoverChurn.index)}
             cy={y(hoverChurn.value)}
@@ -167,12 +186,16 @@ export default function TimelineChart({
             className="chart-dot chart-dot-churn"
           />
         ) : null}
-        <circle
-          cx={x(lastPoint.index)}
-          cy={y(lastPoint.value)}
-          r={4}
-          className="chart-dot chart-dot-commits"
-        />
+        {lastPoint ? (
+          <circle
+            cx={x(lastPoint.index)}
+            cy={y(lastPoint.value)}
+            r={4}
+            className={`chart-dot ${
+              focus === "churn" ? "chart-dot-churn" : "chart-dot-commits"
+            }`}
+          />
+        ) : null}
       </svg>
       <div
         className={`chart-tooltip ${hoverIndex !== null ? "is-visible" : ""}`}
@@ -183,14 +206,18 @@ export default function TimelineChart({
         <div className="chart-tooltip-title">
           {hoverBucket ? formatDate(hoverBucket) : "Hover the trend line"}
         </div>
-        <div className="chart-tooltip-row">
-          <span>Commits</span>
-          <span>{formatNumber(hoverCommit?.value ?? 0)}</span>
-        </div>
-        <div className="chart-tooltip-row">
-          <span>Churn</span>
-          <span>{formatNumber(hoverChurn?.value ?? 0)}</span>
-        </div>
+        {showCommits ? (
+          <div className="chart-tooltip-row">
+            <span>Commits</span>
+            <span>{formatNumber(hoverCommit?.value ?? 0)}</span>
+          </div>
+        ) : null}
+        {showChurn ? (
+          <div className="chart-tooltip-row">
+            <span>Churn</span>
+            <span>{formatNumber(hoverChurn?.value ?? 0)}</span>
+          </div>
+        ) : null}
       </div>
     </div>
   );
