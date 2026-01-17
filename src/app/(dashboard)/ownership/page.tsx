@@ -73,6 +73,7 @@ export default function OwnershipPage() {
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("share");
   const [limit, setLimit] = useState(25);
+  const [focusedPath, setFocusedPath] = useState<string | null>(null);
 
   useEffect(() => {
     if (!state.repoId) {
@@ -114,6 +115,12 @@ export default function OwnershipPage() {
     [ownership],
   );
   const topOwner = useMemo(() => shareSorted[0], [shareSorted]);
+  const focusedOwner = useMemo(() => {
+    if (focusedPath) {
+      return shareSorted.find((row) => row.file_path === focusedPath) ?? topOwner;
+    }
+    return topOwner;
+  }, [focusedPath, shareSorted, topOwner]);
   const concentrationBars = useMemo(
     () =>
       shareSorted.slice(0, 10).map((row) => ({
@@ -482,24 +489,28 @@ export default function OwnershipPage() {
               ) : null}
             </div>
           </div>
-          <div className="mt-4 max-h-[400px] overflow-y-auto overflow-x-auto">
+          <div className="mt-4 max-h-[400px] overflow-y-auto overflow-x-auto scroll-smooth" style={{ scrollbarWidth: 'thin' }}>
             <table className="min-w-full text-left text-sm text-[color:var(--muted)]">
-              <thead className="sticky top-0 bg-[color:var(--background)]">
-                <tr className="border-b border-[color:var(--border)] text-xs uppercase tracking-[0.2em]">
-                  <th className="px-3 py-2">File</th>
-                  <th className="px-3 py-2">Owner</th>
-                  <th className="px-3 py-2">Share</th>
-                  <th className="px-3 py-2">Touches</th>
+              <thead className="sticky top-0 bg-[color:var(--background)] z-10">
+                <tr className="border-b border-[color:var(--border)] text-[10px] uppercase tracking-[0.15em]">
+                  <th className="px-2 py-1.5">File</th>
+                  <th className="px-2 py-1.5">Owner</th>
+                  <th className="px-2 py-1.5">Share</th>
+                  <th className="px-2 py-1.5">Touches</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-[color:var(--border)]/20">
                 {displayedOwnership.length ? (
                   displayedOwnership.map((row) => (
                     <tr
                       key={row.file_path}
-                      className="border-b border-[color:var(--border)]/60"
+                      className={`cursor-pointer transition-colors ${focusedPath === row.file_path
+                        ? "bg-[color:var(--accent)]/10"
+                        : "hover:bg-white/5"
+                        }`}
+                      onClick={() => setFocusedPath(row.file_path)}
                     >
-                      <td className="px-3 py-3 font-mono text-xs text-[color:var(--foreground)]">
+                      <td className="px-2 py-1 font-mono text-xs text-[color:var(--foreground)]">
                         <span
                           className="table-cell-truncate truncate-1"
                           title={row.file_path}
@@ -507,11 +518,11 @@ export default function OwnershipPage() {
                           {row.file_path}
                         </span>
                       </td>
-                      <td className="px-3 py-3">{row.contributor_name}</td>
-                      <td className="px-3 py-3">
+                      <td className="px-2 py-1">{row.contributor_name}</td>
+                      <td className="px-2 py-1">
                         {formatScore(toNumber(row.contribution_share) * 100)}%
                       </td>
-                      <td className="px-3 py-3">{formatNumber(row.touches)}</td>
+                      <td className="px-2 py-1">{formatNumber(row.touches)}</td>
                     </tr>
                   ))
                 ) : (
@@ -588,7 +599,7 @@ export default function OwnershipPage() {
             <h2 className="text-lg font-semibold text-[color:var(--foreground)]">
               Ownership focus
             </h2>
-            {topOwner ? (
+            {focusedOwner ? (
               <div className="mt-4 grid gap-4 text-sm text-[color:var(--muted)]">
                 <div className="panel-muted rounded-2xl px-4 py-3">
                   <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
@@ -596,9 +607,9 @@ export default function OwnershipPage() {
                   </div>
                   <div
                     className="truncate-1 mt-2 font-mono text-xs text-[color:var(--foreground)]"
-                    title={topOwner.file_path}
+                    title={focusedOwner.file_path}
                   >
-                    {topOwner.file_path}
+                    {focusedOwner.file_path}
                   </div>
                 </div>
                 <div className="panel-muted rounded-2xl px-4 py-3">
@@ -606,28 +617,11 @@ export default function OwnershipPage() {
                     Dominant owner
                   </div>
                   <div className="mt-2 text-lg font-semibold text-[color:var(--foreground)]">
-                    {topOwner.contributor_name}
+                    {focusedOwner.contributor_name}
                   </div>
                   <div className="mt-2 text-xs text-[color:var(--muted)]">
-                    {formatScore(toNumber(topOwner.contribution_share) * 100)}%
+                    {formatScore(toNumber(focusedOwner.contribution_share) * 100)}%
                     share of changes
-                  </div>
-                </div>
-                <div className="panel-muted rounded-2xl px-4 py-3">
-                  <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                    Activity
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-xs text-[color:var(--muted)]">
-                    <span>Touches</span>
-                    <span className="text-[color:var(--foreground)]">
-                      {formatNumber(topOwner.touches)}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-xs text-[color:var(--muted)]">
-                    <span>Churn</span>
-                    <span className="text-[color:var(--foreground)]">
-                      {formatNumber(topOwner.churn)}
-                    </span>
                   </div>
                 </div>
               </div>

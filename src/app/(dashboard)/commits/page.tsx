@@ -51,6 +51,45 @@ const CLASSIFICATION_NORMALIZE: Record<string, string> = {
   maintenance: "build",
 };
 
+const PREFIX_CLASSIFICATION: Record<string, string> = {
+  feat: "feat",
+  feature: "feat",
+  fix: "fix",
+  bugfix: "fix",
+  docs: "docs",
+  doc: "docs",
+  style: "style",
+  styles: "style",
+  refactor: "refactor",
+  perf: "perf",
+  test: "test",
+  tests: "test",
+  build: "build",
+  ci: "ci",
+  revert: "revert",
+  chore: "chore",
+};
+
+const CONVENTIONAL_PREFIX = /^(\w+)(?:\([^)]+\))?(?:!)?:/;
+
+const deriveClassification = (commit: CommitRow) => {
+  const stored = commit.classification?.toLowerCase() ?? "unknown";
+  const normalized = CLASSIFICATION_NORMALIZE[stored] ?? stored;
+  if (normalized !== "unknown") {
+    return normalized;
+  }
+
+  const match = commit.message.toLowerCase().match(CONVENTIONAL_PREFIX);
+  if (match) {
+    const mapped = PREFIX_CLASSIFICATION[match[1]];
+    if (mapped) {
+      return mapped;
+    }
+  }
+
+  return normalized;
+};
+
 const CLASSIFICATION_OPTIONS = [
   "all",
   "feat",
@@ -105,9 +144,7 @@ export default function CommitsPage() {
   const filteredCommits = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return commits.filter((commit) => {
-      const normalizedType =
-        CLASSIFICATION_NORMALIZE[commit.classification] ??
-        commit.classification;
+      const normalizedType = deriveClassification(commit);
       if (typeFilter !== "all" && normalizedType !== typeFilter) {
         return false;
       }
@@ -207,9 +244,7 @@ export default function CommitsPage() {
         <div className="mt-5 grid gap-4">
           {filteredCommits.length ? (
             filteredCommits.map((commit) => {
-              const normalizedType =
-                CLASSIFICATION_NORMALIZE[commit.classification] ??
-                commit.classification;
+              const normalizedType = deriveClassification(commit);
               const classification =
                 CLASSIFICATION_LABELS[normalizedType] ?? "Other";
               const color =
