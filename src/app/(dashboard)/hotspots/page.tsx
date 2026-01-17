@@ -15,6 +15,8 @@ type Hotspot = {
   hotspot_score: number | string;
 };
 
+type IntensityMetric = "score" | "touches" | "churn";
+
 const toNumber = (value: number | string) => {
   const numeric = Number.parseFloat(String(value));
   return Number.isFinite(numeric) ? numeric : 0;
@@ -36,6 +38,8 @@ export default function HotspotsPage() {
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("score");
+  const [intensityMetric, setIntensityMetric] =
+    useState<IntensityMetric>("score");
   const [limit, setLimit] = useState(25);
 
   useEffect(() => {
@@ -70,16 +74,52 @@ export default function HotspotsPage() {
       ),
     [hotspots],
   );
+  const metricValue = (row: Hotspot) => {
+    if (intensityMetric === "touches") {
+      return row.touches;
+    }
+    if (intensityMetric === "churn") {
+      return row.churn;
+    }
+    return toNumber(row.hotspot_score);
+  };
+  const intensitySorted = useMemo(
+    () =>
+      [...hotspots].sort((a, b) => metricValue(b) - metricValue(a)),
+    [hotspots, intensityMetric],
+  );
+  const intensityTop = useMemo(
+    () => intensitySorted.slice(0, 12),
+    [intensitySorted],
+  );
+  const intensityRanked = useMemo(
+    () => intensitySorted.slice(0, 6),
+    [intensitySorted],
+  );
+  const maxMetricValue = useMemo(
+    () =>
+      intensityRanked.reduce(
+        (max, row) => Math.max(max, metricValue(row)),
+        0,
+      ),
+    [intensityRanked, intensityMetric],
+  );
+  const intensityLabel =
+    intensityMetric === "touches"
+      ? "Touches"
+      : intensityMetric === "churn"
+        ? "Churn"
+        : "Score";
   const topHotspot = scoreSorted[0];
   const tiles = useMemo(() => scoreSorted.slice(0, 12), [scoreSorted]);
   const barData = useMemo(
     () =>
-      scoreSorted.slice(0, 12).map((row) => ({
+      intensityTop.map((row) => ({
         label: row.file_path.split("/").slice(-1)[0] ?? row.file_path,
-        value: toNumber(row.hotspot_score),
+        value: metricValue(row),
         title: row.file_path,
       })),
-    [scoreSorted],
+    [intensityTop, intensityMetric],
   );
 
   const filteredHotspots = useMemo(() => {
@@ -148,15 +188,87 @@ export default function HotspotsPage() {
         className="soft-panel reveal rounded-3xl p-6"
         style={{ animationDelay: "0.1s" }}
       >
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-[color:var(--foreground)]">
-            Hotspot intensity
-          </h2>
-          <span className="text-xs text-[color:var(--muted)]">Top 12</span>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-[color:var(--foreground)]">
+              Hotspot intensity
+            </h2>
+            <p className="text-xs text-[color:var(--muted)]">
+              Top 12 ranked by {intensityLabel.toLowerCase()}.
+            </p>
+          </div>
+          <div className="toggle-group">
+            <button
+              className={`toggle-button ${
+                intensityMetric === "score" ? "toggle-active" : ""
+              }`}
+              type="button"
+              onClick={() => setIntensityMetric("score")}
+            >
+              Score
+            </button>
+            <button
+              className={`toggle-button ${
+                intensityMetric === "touches" ? "toggle-active" : ""
+              }`}
+              type="button"
+              onClick={() => setIntensityMetric("touches")}
+            >
+              Touches
+            </button>
+            <button
+              className={`toggle-button ${
+                intensityMetric === "churn" ? "toggle-active" : ""
+              }`}
+              type="button"
+              onClick={() => setIntensityMetric("churn")}
+            >
+              Churn
+            </button>
+          </div>
         </div>
         {barData.length ? (
-          <div className="mt-4 h-52">
-            <BarChart data={barData} color="var(--accent)" />
+          <div className="mt-5 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+            <div className="h-56">
+              <BarChart data={barData} color="var(--accent)" />
+            </div>
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  Intensity ladder
+                </span>
+                <span className="text-xs text-[color:var(--muted)]">
+                  Top 6
+                </span>
+              </div>
+              <div className="mt-4 metric-list">
+                {intensityRanked.map((row, index) => {
+                  const value = metricValue(row);
+                  const width = maxMetricValue
+                    ? Math.min((value / maxMetricValue) * 100, 100)
+                    : 0;
+                  const formatted =
+                    intensityMetric === "score"
+                      ? formatScore(value)
+                      : formatNumber(value);
+                  return (
+                    <div className="metric-row" key={row.file_path}>
+                      <div className="metric-label">
+                        {index + 1}.{" "}
+                        {row.file_path.split("/").slice(-1)[0] ?? row.file_path}
+                      </div>
+                      <div className="metric-bar">
+                        <span
+                          className="metric-bar-fill"
+                          style={{ width: `${width}%` }}
+                        />
+                      </div>
+                      <div className="metric-value">{formatted}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         ) : (
           <p className="mt-4 text-sm text-[color:var(--muted)]">
