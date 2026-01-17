@@ -110,6 +110,8 @@ export default function HotspotsPage() {
       : intensityMetric === "churn"
         ? "Churn"
         : "Score";
+  const formatIntensityValue = (value: number) =>
+    intensityMetric === "score" ? formatScore(value) : formatNumber(value);
   const topHotspot = scoreSorted[0];
   const tiles = useMemo(() => scoreSorted.slice(0, 12), [scoreSorted]);
   const barData = useMemo(
@@ -230,7 +232,11 @@ export default function HotspotsPage() {
         {barData.length ? (
           <div className="mt-5 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
             <div className="h-56">
-              <BarChart data={barData} color="var(--accent)" />
+              <BarChart
+                data={barData}
+                color="var(--accent)"
+                formatValue={formatIntensityValue}
+              />
             </div>
             <div>
               <div className="flex items-center justify-between">
@@ -253,7 +259,10 @@ export default function HotspotsPage() {
                       : formatNumber(value);
                   return (
                     <div className="metric-row" key={row.file_path}>
-                      <div className="metric-label">
+                      <div
+                        className="metric-label"
+                        title={row.file_path}
+                      >
                         {index + 1}.{" "}
                         {row.file_path.split("/").slice(-1)[0] ?? row.file_path}
                       </div>
@@ -292,18 +301,23 @@ export default function HotspotsPage() {
           </div>
           {tiles.length ? (
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              {tiles.map((tile, index) => (
-                <div
-                  key={tile.file_path}
-                  className="rounded-2xl px-4 py-5 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow-md"
-                  style={{
-                    background: TILE_COLORS[index % TILE_COLORS.length],
-                    opacity: 0.9,
-                  }}
-                >
-                  {tile.file_path.split("/").slice(-1)[0]}
-                </div>
-              ))}
+              {tiles.map((tile, index) => {
+                const tileName =
+                  tile.file_path.split("/").slice(-1)[0] ?? tile.file_path;
+                return (
+                  <div
+                    key={tile.file_path}
+                    className="clamp-2 wrap-anywhere rounded-2xl px-4 py-5 text-center text-xs font-semibold uppercase leading-snug tracking-[0.2em] text-white shadow-md"
+                    style={{
+                      background: TILE_COLORS[index % TILE_COLORS.length],
+                      opacity: 0.9,
+                    }}
+                    title={tile.file_path}
+                  >
+                    {tileName}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <p className="mt-4 text-sm text-[color:var(--muted)]">
@@ -322,7 +336,10 @@ export default function HotspotsPage() {
                 <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                   File
                 </div>
-                <div className="mt-2 font-mono text-xs text-[color:var(--foreground)]">
+                <div
+                  className="truncate-1 mt-2 font-mono text-xs text-[color:var(--foreground)]"
+                  title={topHotspot.file_path}
+                >
                   {topHotspot.file_path}
                 </div>
               </div>
@@ -442,7 +459,12 @@ export default function HotspotsPage() {
                     className="border-b border-[color:var(--border)]/60"
                   >
                     <td className="px-3 py-3 font-mono text-xs text-[color:var(--foreground)]">
-                      {row.file_path}
+                      <span
+                        className="table-cell-truncate truncate-1"
+                        title={row.file_path}
+                      >
+                        {row.file_path}
+                      </span>
                     </td>
                     <td className="px-3 py-3">
                       {formatScore(row.hotspot_score)}

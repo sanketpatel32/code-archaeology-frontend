@@ -1,6 +1,8 @@
 "use client";
 
 import { area, curveMonotoneX, line, max, scaleLinear } from "d3";
+import { useRef, useState } from "react";
+import { formatDate, formatNumber } from "@/lib/format";
 
 export type TimelineDatum = {
   bucket: string;
@@ -25,6 +27,10 @@ export default function TimelineChart({
 }: TimelineChartProps) {
   const width = 640;
   const padding = { top: 16, right: 24, bottom: 28, left: 24 };
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const [pointer, setPointer] = useState({ x: 0, y: 0 });
+  const shellRef = useRef<HTMLDivElement | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
 
   const points = data.map((row, index) => ({
     index,
@@ -84,35 +90,108 @@ export default function TimelineChart({
   const churnArea = areaGenerator(churnSeries) ?? "";
 
   const lastPoint = commitSeries[commitSeries.length - 1];
+  const hoverCommit = hoverIndex !== null ? commitSeries[hoverIndex] : null;
+  const hoverChurn = hoverIndex !== null ? churnSeries[hoverIndex] : null;
+  const hoverBucket = hoverIndex !== null ? data[hoverIndex]?.bucket : null;
 
   return (
-    <svg
-      className="chart chart-timeline"
-      viewBox={`0 0 ${width} ${height}`}
-      preserveAspectRatio="none"
-      role="img"
-      aria-label="Commit and churn trend chart"
-    >
-      <g className="chart-grid">
-        {gridLines.map((line) => (
+    <div className="chart-shell" ref={shellRef}>
+      <svg
+        className="chart chart-timeline"
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="none"
+        role="img"
+        aria-label="Commit and churn trend chart"
+        ref={svgRef}
+        onMouseMove={(event) => {
+          const svg = svgRef.current;
+          const shell = shellRef.current;
+          if (!svg || !shell) {
+            return;
+          }
+          const bounds = svg.getBoundingClientRect();
+          const shellBounds = shell.getBoundingClientRect();
+          const xPos = ((event.clientX - bounds.left) / bounds.width) * width;
+          const clamped = Math.min(
+            Math.max(xPos - padding.left, 0),
+            width - padding.left - padding.right,
+          );
+          const index = Math.round(
+            (clamped / (width - padding.left - padding.right)) *
+              (points.length - 1),
+          );
+          setHoverIndex(index);
+          setPointer({
+            x: event.clientX - shellBounds.left,
+            y: event.clientY - shellBounds.top,
+          });
+        }}
+        onMouseLeave={() => setHoverIndex(null)}
+      >
+        <g className="chart-grid">
+          {gridLines.map((line) => (
+            <line
+              key={`grid-${line.value}`}
+              x1={padding.left}
+              x2={width - padding.right}
+              y1={line.y}
+              y2={line.y}
+            />
+          ))}
+        </g>
+        <path className="chart-area" d={churnArea} />
+        <path className="chart-line chart-line-churn" d={churnPath} />
+        <path className="chart-line chart-line-commits" d={commitPath} />
+        {hoverIndex !== null ? (
           <line
-            key={`grid-${line.value}`}
-            x1={padding.left}
-            x2={width - padding.right}
-            y1={line.y}
-            y2={line.y}
+            className="chart-hover-line"
+            x1={x(hoverIndex)}
+            x2={x(hoverIndex)}
+            y1={padding.top}
+            y2={height - padding.bottom}
           />
-        ))}
-      </g>
-      <path className="chart-area" d={churnArea} />
-      <path className="chart-line chart-line-churn" d={churnPath} />
-      <path className="chart-line chart-line-commits" d={commitPath} />
-      <circle
-        cx={x(lastPoint.index)}
-        cy={y(lastPoint.value)}
-        r={4}
-        className="chart-dot"
-      />
-    </svg>
+        ) : null}
+        {hoverCommit ? (
+          <circle
+            cx={x(hoverCommit.index)}
+            cy={y(hoverCommit.value)}
+            r={4.5}
+            className="chart-dot chart-dot-commits"
+          />
+        ) : null}
+        {hoverChurn ? (
+          <circle
+            cx={x(hoverChurn.index)}
+            cy={y(hoverChurn.value)}
+            r={4.5}
+            className="chart-dot chart-dot-churn"
+          />
+        ) : null}
+        <circle
+          cx={x(lastPoint.index)}
+          cy={y(lastPoint.value)}
+          r={4}
+          className="chart-dot chart-dot-commits"
+        />
+      </svg>
+      <div
+        className={`chart-tooltip ${hoverIndex !== null ? "is-visible" : ""}`}
+        style={{
+          transform: `translate(${pointer.x + 12}px, ${pointer.y + 12}px)`,
+        }}
+      >
+        <div className="chart-tooltip-title">
+          {hoverBucket ? formatDate(hoverBucket) : "Hover the trend line"}
+        </div>
+        <div className="chart-tooltip-row">
+          <span>Commits</span>
+          <span>{formatNumber(hoverCommit?.value ?? 0)}</span>
+        </div>
+        <div className="chart-tooltip-row">
+          <span>Churn</span>
+          <span>{formatNumber(hoverChurn?.value ?? 0)}</span>
+        </div>
+      </div>
+    </div>
   );
 }

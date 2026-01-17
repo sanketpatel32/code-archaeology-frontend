@@ -9,6 +9,7 @@ import { useAnalysisState } from "@/lib/useAnalysisState";
 
 const NAV_LINKS = [
   { href: "/", label: "Overview" },
+  { href: "/timeline", label: "Timeline" },
   { href: "/hotspots", label: "Hotspots" },
   { href: "/fragility", label: "Fragility" },
   { href: "/ownership", label: "Ownership" },

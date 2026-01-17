@@ -102,6 +102,12 @@ export default function TreemapChart({
           const tileHeight = leaf.y1 - leaf.y0;
           const showLabel = tileWidth > 110 && tileHeight > 44;
           const isActive = activeIndex === index;
+          const maxChars = Math.max(6, Math.floor(tileWidth / 9));
+          const safeChars = Math.max(4, maxChars);
+          const displayLabel =
+            leaf.name.length > safeChars
+              ? `${leaf.name.slice(0, safeChars - 3)}...`
+              : leaf.name;
 
           return (
             <g
@@ -119,7 +125,7 @@ export default function TreemapChart({
               />
               {showLabel ? (
                 <text className="treemap-label" x={10} y={20}>
-                  {leaf.name}
+                  {displayLabel}
                 </text>
               ) : null}
               <title>{leaf.path}</title>

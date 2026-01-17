@@ -17,6 +17,23 @@ type Complexity = {
   lines: number;
 };
 
+const getNestingTone = (value: number) => {
+  if (value >= 9) {
+    return { label: "Severe", bg: "var(--risk-soft)", color: "var(--risk)" };
+  }
+  if (value >= 6) {
+    return {
+      label: "High",
+      bg: "var(--warning-soft)",
+      color: "var(--warning)",
+    };
+  }
+  if (value >= 3) {
+    return { label: "Guarded", bg: "var(--panel-soft)", color: "var(--muted)" };
+  }
+  return { label: "Low", bg: "var(--signal-soft)", color: "var(--signal)" };
+};
+
 export default function ComplexityPage() {
   const { state } = useAnalysisState();
   const [complexity, setComplexity] = useState<Complexity[]>([]);
@@ -65,18 +82,75 @@ export default function ComplexityPage() {
     );
     return Math.round(total / complexity.length);
   }, [complexity]);
-  const complexityBars = useMemo(
-    () =>
-      [...complexity]
-        .sort((a, b) => b.max_nesting - a.max_nesting)
-        .slice(0, 12)
-        .map((row) => ({
-          label: row.file_path.split("/").slice(-1)[0] ?? row.file_path,
-          value: row.max_nesting,
-          title: row.file_path,
-        })),
+  const nestingSorted = useMemo(
+    () => [...complexity].sort((a, b) => b.max_nesting - a.max_nesting),
     [complexity],
   );
+  const complexityBars = useMemo(
+    () =>
+      nestingSorted.slice(0, 12).map((row) => ({
+        label: row.file_path.split("/").slice(-1)[0] ?? row.file_path,
+        value: row.max_nesting,
+        title: row.file_path,
+      })),
+    [nestingSorted],
+  );
+  const topNesting = nestingSorted[0];
+  const nestingTone = useMemo(
+    () => (topNesting ? getNestingTone(topNesting.max_nesting) : null),
+    [topNesting],
+  );
+  const nestingLeaders = useMemo(
+    () => nestingSorted.slice(0, 6),
+    [nestingSorted],
+  );
+  const nestingPeak = nestingLeaders[0]?.max_nesting ?? 0;
+  const nestingValues = useMemo(
+    () => complexity.map((row) => row.max_nesting || 0),
+    [complexity],
+  );
+  const nestingStats = useMemo(() => {
+    if (!nestingValues.length) {
+      return null;
+    }
+    const sorted = [...nestingValues].sort((a, b) => a - b);
+    const pick = (ratio: number) => {
+      const index = Math.floor((sorted.length - 1) * ratio);
+      return sorted[index] ?? 0;
+    };
+    return {
+      total: sorted.length,
+      min: sorted[0] ?? 0,
+      max: sorted[sorted.length - 1] ?? 0,
+      median: pick(0.5),
+      p90: pick(0.9),
+    };
+  }, [nestingValues]);
+  const nestingBands = useMemo(() => {
+    if (!nestingValues.length) {
+      return [];
+    }
+    const total = nestingValues.length;
+    const bands = [
+      { label: "Shallow 0-2", min: 0, max: 3, color: "var(--signal)" },
+      { label: "Moderate 3-5", min: 3, max: 6, color: "var(--accent)" },
+      { label: "Deep 6-8", min: 6, max: 9, color: "var(--warning)" },
+      {
+        label: "Severe 9+",
+        min: 9,
+        max: Number.POSITIVE_INFINITY,
+        color: "var(--risk)",
+      },
+    ];
+
+    return bands.map((band) => {
+      const count = nestingValues.filter(
+        (value) => value >= band.min && value < band.max,
+      ).length;
+      const percent = total ? (count / total) * 100 : 0;
+      return { ...band, count, percent };
+    });
+  }, [nestingValues]);
   const filteredComplexity = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     const base = normalized
@@ -160,15 +234,196 @@ export default function ComplexityPage() {
         className="soft-panel reveal rounded-3xl p-6"
         style={{ animationDelay: "0.2s" }}
       >
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-[color:var(--foreground)]">
-            Nesting hotspots
-          </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-[color:var(--foreground)]">
+              Nesting hotspots
+            </h2>
+            <p className="mt-1 text-xs text-[color:var(--muted)]">
+              Files with the deepest control-flow nesting.
+            </p>
+          </div>
           <span className="text-xs text-[color:var(--muted)]">Top 12</span>
         </div>
         {complexityBars.length ? (
-          <div className="mt-4 h-52">
-            <BarChart data={complexityBars} color="var(--accent)" />
+          <div className="mt-5 grid items-start gap-6 lg:grid-cols-2">
+            <div className="grid gap-4">
+              <div className="panel-muted rounded-2xl p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    Depth trend
+                  </span>
+                  <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    <span className="chip rounded-full px-3 py-1">
+                      Peak {formatNumber(nestingStats?.max ?? 0)}
+                    </span>
+                    <span className="chip rounded-full px-3 py-1">
+                      Avg {formatNumber(avgNesting)}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-4 h-56">
+                  <BarChart
+                    data={complexityBars}
+                    color="var(--accent)"
+                    formatValue={(value) => formatNumber(value)}
+                  />
+                </div>
+              </div>
+              <div className="panel-muted rounded-2xl p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-[0.2em]">
+                    Nesting distribution
+                  </span>
+                  <span className="text-xs text-[color:var(--muted)]">
+                    {formatNumber(nestingStats?.total ?? 0)} files
+                  </span>
+                </div>
+                <div className="mt-4 metric-list">
+                  {nestingBands.map((band) => (
+                    <div className="metric-row" key={band.label}>
+                      <div className="metric-label">{band.label}</div>
+                      <div className="metric-bar">
+                        <span
+                          className="metric-bar-fill"
+                          style={{
+                            width: `${band.percent}%`,
+                            background: band.color,
+                          }}
+                        />
+                      </div>
+                      <div
+                        className="metric-value"
+                        title={`${formatNumber(band.count)} files`}
+                      >
+                        {Math.round(band.percent)}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 grid gap-2 text-xs text-[color:var(--muted)]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs uppercase tracking-[0.2em]">
+                      Median
+                    </span>
+                    <span className="text-[color:var(--foreground)]">
+                      {formatNumber(nestingStats?.median ?? 0)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs uppercase tracking-[0.2em]">
+                      90th percentile
+                    </span>
+                    <span className="text-[color:var(--foreground)]">
+                      {formatNumber(nestingStats?.p90 ?? 0)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs uppercase tracking-[0.2em]">
+                      Range
+                    </span>
+                    <span className="text-[color:var(--foreground)]">
+                      {formatNumber(nestingStats?.min ?? 0)} -{" "}
+                      {formatNumber(nestingStats?.max ?? 0)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="grid gap-4">
+              <div className="panel-muted rounded-2xl p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-[0.2em]">
+                    Nesting focus
+                  </span>
+                  {nestingTone ? (
+                    <span
+                      className="rounded-full px-2 py-1 text-[10px] uppercase tracking-[0.2em]"
+                      style={{
+                        background: nestingTone.bg,
+                        color: nestingTone.color,
+                      }}
+                    >
+                      {nestingTone.label}
+                    </span>
+                  ) : null}
+                </div>
+                {topNesting ? (
+                  <div className="mt-3 grid gap-3 text-sm text-[color:var(--muted)]">
+                    <div
+                      className="truncate-1 font-mono text-xs text-[color:var(--foreground)]"
+                      title={topNesting.file_path}
+                    >
+                      {topNesting.file_path}
+                    </div>
+                    <div className="grid gap-2 text-xs text-[color:var(--muted)]">
+                      <div className="flex items-center justify-between">
+                        <span>Max nesting</span>
+                        <span className="text-[color:var(--foreground)]">
+                          {formatNumber(topNesting.max_nesting)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Functions</span>
+                        <span className="text-[color:var(--foreground)]">
+                          {formatNumber(topNesting.functions)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Conditionals</span>
+                        <span className="text-[color:var(--foreground)]">
+                          {formatNumber(topNesting.conditionals)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Lines</span>
+                        <span className="text-[color:var(--foreground)]">
+                          {formatNumber(topNesting.lines)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-[color:var(--muted)]">
+                    No hotspot data available.
+                  </p>
+                )}
+              </div>
+              <div className="panel-muted rounded-2xl p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-[0.2em]">
+                    Nesting leaders
+                  </span>
+                  <span className="text-xs text-[color:var(--muted)]">
+                    Top 6
+                  </span>
+                </div>
+                <div className="mt-4 metric-list">
+                  {nestingLeaders.map((row) => {
+                    const width = nestingPeak
+                      ? Math.min((row.max_nesting / nestingPeak) * 100, 100)
+                      : 0;
+                    return (
+                      <div className="metric-row" key={row.file_path}>
+                        <div className="metric-label" title={row.file_path}>
+                          {row.file_path.split("/").slice(-1)[0] ??
+                            row.file_path}
+                        </div>
+                        <div className="metric-bar">
+                          <span
+                            className="metric-bar-fill"
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                        <div className="metric-value">
+                          {formatNumber(row.max_nesting)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
           <p className="mt-4 text-sm text-[color:var(--muted)]">
@@ -255,12 +510,17 @@ export default function ComplexityPage() {
             <tbody>
               {displayedComplexity.length ? (
                 displayedComplexity.map((row) => (
-                  <tr
-                    key={`${row.file_path}-${row.commit_sha}`}
-                    className="border-b border-[color:var(--border)]/60"
-                  >
+                    <tr
+                      key={`${row.file_path}-${row.commit_sha}`}
+                      className="border-b border-[color:var(--border)]/60"
+                    >
                     <td className="px-3 py-3 font-mono text-xs text-[color:var(--foreground)]">
-                      {row.file_path}
+                      <span
+                        className="table-cell-truncate truncate-1"
+                        title={row.file_path}
+                      >
+                        {row.file_path}
+                      </span>
                     </td>
                     <td className="px-3 py-3">{formatNumber(row.functions)}</td>
                     <td className="px-3 py-3">

@@ -35,6 +35,52 @@ export default function FragilityPage() {
       ),
     [fragility],
   );
+  const fragilityValues = useMemo(
+    () => fragility.map((row) => toNumber(row.fragility_index)),
+    [fragility],
+  );
+  const fragilityStats = useMemo(() => {
+    if (!fragilityValues.length) {
+      return null;
+    }
+    const sorted = [...fragilityValues].sort((a, b) => a - b);
+    const pick = (ratio: number) => {
+      const index = Math.floor((sorted.length - 1) * ratio);
+      return sorted[index] ?? 0;
+    };
+    return {
+      total: sorted.length,
+      min: sorted[0] ?? 0,
+      max: sorted[sorted.length - 1] ?? 0,
+      median: pick(0.5),
+      p90: pick(0.9),
+    };
+  }, [fragilityValues]);
+  const fragilityBands = useMemo(() => {
+    if (!fragilityValues.length) {
+      return [];
+    }
+    const total = fragilityValues.length;
+    const bands = [
+      { label: "Low (0-0.25)", min: 0, max: 0.25, color: "var(--signal)" },
+      {
+        label: "Guarded (0.25-0.5)",
+        min: 0.25,
+        max: 0.5,
+        color: "var(--accent)",
+      },
+      { label: "High (0.5-0.75)", min: 0.5, max: 0.75, color: "var(--warning)" },
+      { label: "Severe (0.75-1.0)", min: 0.75, max: 1.01, color: "var(--risk)" },
+    ];
+
+    return bands.map((band) => {
+      const count = fragilityValues.filter(
+        (value) => value >= band.min && value < band.max,
+      ).length;
+      const percent = total ? (count / total) * 100 : 0;
+      return { ...band, count, percent };
+    });
+  }, [fragilityValues]);
   const barData = useMemo(
     () =>
       indexSorted.slice(0, 12).map((row) => ({
@@ -130,15 +176,85 @@ export default function FragilityPage() {
         className="soft-panel reveal rounded-3xl p-6"
         style={{ animationDelay: "0.1s" }}
       >
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-[color:var(--foreground)]">
-            Fragility index spread
-          </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-[color:var(--foreground)]">
+              Fragility index spread
+            </h2>
+            <p className="mt-1 text-xs text-[color:var(--muted)]">
+              Index normalized from 0 (stable) to 1 (fragile).
+            </p>
+          </div>
           <span className="text-xs text-[color:var(--muted)]">Top 12</span>
         </div>
         {barData.length ? (
-          <div className="mt-4 h-52">
-            <BarChart data={barData} color="var(--warning)" />
+          <div className="mt-5 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+            <div className="h-56">
+              <BarChart
+                data={barData}
+                color="var(--warning)"
+                formatValue={(value) => formatScore(value)}
+              />
+            </div>
+            <div className="panel-muted rounded-2xl p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-[0.2em]">
+                  Risk bands
+                </span>
+                <span className="text-xs text-[color:var(--muted)]">
+                  {formatNumber(fragilityStats?.total ?? 0)} files
+                </span>
+              </div>
+              <div className="mt-4 metric-list">
+                {fragilityBands.map((band) => (
+                  <div className="metric-row" key={band.label}>
+                    <div className="metric-label">{band.label}</div>
+                    <div className="metric-bar">
+                      <span
+                        className="metric-bar-fill"
+                        style={{
+                          width: `${band.percent}%`,
+                          background: band.color,
+                        }}
+                      />
+                    </div>
+                    <div
+                      className="metric-value"
+                      title={`${formatNumber(band.count)} files`}
+                    >
+                      {Math.round(band.percent)}%
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 grid gap-2 text-xs text-[color:var(--muted)]">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-[0.2em]">
+                    Median
+                  </span>
+                  <span className="text-[color:var(--foreground)]">
+                    {formatScore(fragilityStats?.median ?? null)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-[0.2em]">
+                    90th percentile
+                  </span>
+                  <span className="text-[color:var(--foreground)]">
+                    {formatScore(fragilityStats?.p90 ?? null)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-[0.2em]">
+                    Range
+                  </span>
+                  <span className="text-[color:var(--foreground)]">
+                    {formatScore(fragilityStats?.min ?? null)} -{" "}
+                    {formatScore(fragilityStats?.max ?? null)}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
           <p className="mt-4 text-sm text-[color:var(--muted)]">
@@ -228,7 +344,12 @@ export default function FragilityPage() {
                     className="border-b border-[color:var(--border)]/60"
                   >
                     <td className="px-3 py-3 font-mono text-xs text-[color:var(--foreground)]">
-                      {row.file_path}
+                      <span
+                        className="table-cell-truncate truncate-1"
+                        title={row.file_path}
+                      >
+                        {row.file_path}
+                      </span>
                     </td>
                     <td className="px-3 py-3">
                       {formatScore(row.fragility_index)}

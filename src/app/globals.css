@@ -229,6 +229,8 @@ body {
 .metric-bar-fill {
   height: 100%;
   background: var(--accent);
+  display: block;
+  border-radius: inherit;
 }
 
 .metric-value {
@@ -237,6 +239,29 @@ body {
   font-size: 0.75rem;
   color: var(--foreground);
   font-weight: 600;
+}
+
+.wrap-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.truncate-1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.table-cell-truncate {
+  display: block;
+  max-width: 280px;
 }
 
 .button-primary {
@@ -413,8 +438,66 @@ body {
   display: block;
 }
 
+.chart-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.chart-tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  min-width: 160px;
+  max-width: 240px;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.8rem;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.chart-tooltip.is-visible {
+  opacity: 1;
+}
+
+.chart-tooltip-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+}
+
+.chart-tooltip-value {
+  margin-top: 0.35rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.chart-tooltip-row {
+  margin-top: 0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.chart-tooltip-row span:last-child {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
 .chart-treemap {
   overflow: visible;
+}
+
+.chart-timeline {
+  cursor: crosshair;
 }
 
 .treemap-shell {
@@ -470,6 +553,27 @@ body {
   stroke-width: 1;
 }
 
+.chart-hover-line {
+  stroke: rgba(148, 163, 184, 0.45);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.activity-focus-commits .chart-line-churn,
+.activity-focus-commits .chart-area {
+  opacity: 0.2;
+}
+
+.activity-focus-churn .chart-line-commits,
+.activity-focus-churn .chart-dot {
+  opacity: 0.2;
+}
+
+.activity-focus-commits .chart-line-commits,
+.activity-focus-churn .chart-line-churn {
+  stroke-width: 3;
+}
+
 .chart-line {
   fill: none;
   stroke-width: 2.5;
@@ -493,17 +597,46 @@ body {
   stroke-width: 2;
 }
 
+.chart-dot-commits {
+  fill: var(--accent);
+}
+
+.chart-dot-churn {
+  fill: var(--signal);
+}
+
 .chart-bar-rect {
   transform-origin: bottom;
   transform-box: fill-box;
   transform: scaleY(0);
   animation: bar-grow 0.7s ease forwards;
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+}
+
+.chart-bar-rect-active {
+  opacity: 1;
+}
+
+.chart-bar-rect-dim {
+  opacity: 0.3;
 }
 
 .chart-arc {
   transform-origin: center;
   transform: scale(0.92);
   animation: arc-pop 0.6s ease forwards;
+  transition: opacity 0.2s ease, stroke 0.2s ease;
+  cursor: pointer;
+}
+
+.chart-arc-dim {
+  opacity: 0.45;
+}
+
+.chart-arc-active {
+  stroke: rgba(255, 255, 255, 0.4);
+  stroke-width: 2;
 }
 
 .chart-donut-core {

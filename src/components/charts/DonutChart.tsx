@@ -1,6 +1,7 @@
 "use client";
 
 import { arc, pie } from "d3";
+import { useMemo, useState } from "react";
 
 export type DonutSegment = {
   label: string;
@@ -21,6 +22,16 @@ export default function DonutChart({
 }: DonutChartProps) {
   const radius = size / 2;
   const total = segments.reduce((sum, segment) => sum + segment.value, 0);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const activeSegment = activeIndex !== null ? segments[activeIndex] : null;
+  const centerLabel = activeSegment ? activeSegment.label : "signals";
+  const centerValue = activeSegment ? activeSegment.value : total;
+  const centerPercent = useMemo(() => {
+    if (!activeSegment || total === 0) {
+      return null;
+    }
+    return Math.round((activeSegment.value / total) * 100);
+  }, [activeSegment, total]);
 
   const pieGenerator = pie<DonutSegment>()
     .value((segment) => segment.value)
@@ -46,16 +57,27 @@ export default function DonutChart({
             key={arcData.data.label}
             d={arcGenerator(arcData) ?? ""}
             fill={arcData.data.color}
-            className="chart-arc"
+            className={`chart-arc ${
+              activeIndex !== null && activeIndex !== arcData.index
+                ? "chart-arc-dim"
+                : ""
+            } ${activeIndex === arcData.index ? "chart-arc-active" : ""}`}
+            onMouseEnter={() => setActiveIndex(arcData.index)}
+            onMouseLeave={() => setActiveIndex(null)}
           />
         ))}
         <circle className="chart-donut-core" r={innerRadius - 8} />
         <text className="chart-donut-value" textAnchor="middle" dy="-0.1em">
-          {total}
+          {centerValue}
         </text>
         <text className="chart-donut-label" textAnchor="middle" dy="1.3em">
-          signals
+          {centerLabel}
         </text>
+        {centerPercent !== null ? (
+          <text className="chart-donut-label" textAnchor="middle" dy="2.7em">
+            {centerPercent}% share
+          </text>
+        ) : null}
       </g>
     </svg>
   );
