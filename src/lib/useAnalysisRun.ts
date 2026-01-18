@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "./api";
 
 export type AnalysisRun = {
@@ -18,52 +19,31 @@ export type StatusTone = {
 };
 
 export function useAnalysisRun(runId: string | null, pollMs = 3000) {
-  const [run, setRun] = useState<AnalysisRun | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { data: run, error } = useQuery({
+    queryKey: ["analysis-run", runId],
+    queryFn: () => apiGet<AnalysisRun>(`/api/analysis/${runId}`),
+    enabled: Boolean(runId),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === "succeeded" || status === "failed") {
+        return false;
+      }
+      return pollMs;
+    },
+  });
 
-  useEffect(() => {
-    if (!runId) {
-      setRun(null);
-      setError(null);
-      return;
+  const errorMessage = useMemo(() => {
+    if (run?.status === "failed") {
+      return run.error_message || "Analysis failed.";
     }
-
-    let timer: ReturnType<typeof setInterval> | null = null;
-    let active = true;
-
-    const poll = async () => {
-      try {
-        const data = await apiGet<AnalysisRun>(`/api/analysis/${runId}`);
-        if (!active) {
-          return;
-        }
-        setRun(data);
-        if (data.status === "failed") {
-          setError(data.error_message || "Analysis failed.");
-        }
-        if (data.status === "succeeded" || data.status === "failed") {
-          if (timer) {
-            clearInterval(timer);
-          }
-        }
-      } catch (err) {
-        if (!active) {
-          return;
-        }
-        setError(err instanceof Error ? err.message : "Unable to poll status.");
-      }
-    };
-
-    poll();
-    timer = setInterval(poll, pollMs);
-
-    return () => {
-      active = false;
-      if (timer) {
-        clearInterval(timer);
-      }
-    };
-  }, [runId, pollMs]);
+    if (error instanceof Error) {
+      return error.message;
+    }
+    if (error) {
+      return "Unable to poll status.";
+    }
+    return null;
+  }, [error, run]);
 
   const statusTone = useMemo<StatusTone>(() => {
     if (!run) {
@@ -96,5 +76,5 @@ export function useAnalysisRun(runId: string | null, pollMs = 3000) {
     };
   }, [run]);
 
-  return { run, error, statusTone };
+  return { run: run ?? null, error: errorMessage, statusTone };
 }

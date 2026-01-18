@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import BarChart from "@/components/charts/BarChart";
 import DonutChart, { type DonutSegment } from "@/components/charts/DonutChart";
 import { apiGet } from "@/lib/api";
@@ -66,45 +67,52 @@ const getRiskTone = (share: number) => {
 
 export default function OwnershipPage() {
   const { state } = useAnalysisState();
-  const [ownership, setOwnership] = useState<Ownership[]>([]);
-  const [busFactor, setBusFactor] = useState<BusFactor[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("share");
   const [limit, setLimit] = useState(25);
   const [focusedPath, setFocusedPath] = useState<string | null>(null);
+  const {
+    data: ownership = [],
+    isLoading: ownershipLoading,
+    isFetching: ownershipFetching,
+    error: ownershipError,
+  } = useQuery({
+    queryKey: ["ownership", state.repoId, 30],
+    queryFn: () =>
+      apiGet<Ownership[]>(
+        `/api/repositories/${state.repoId}/ownership?limit=30`,
+      ),
+    enabled: Boolean(state.repoId),
+    placeholderData: (previous) => previous ?? [],
+  });
+  const {
+    data: busFactor = [],
+    isLoading: busFactorLoading,
+    isFetching: busFactorFetching,
+    error: busFactorError,
+  } = useQuery({
+    queryKey: ["bus-factor", state.repoId, 10],
+    queryFn: () =>
+      apiGet<BusFactor[]>(
+        `/api/repositories/${state.repoId}/bus-factor?limit=10`,
+      ),
+    enabled: Boolean(state.repoId),
+    placeholderData: (previous) => previous ?? [],
+  });
 
-  useEffect(() => {
-    if (!state.repoId) {
-      return;
-    }
-
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [ownershipData, busFactorData] = await Promise.all([
-          apiGet<Ownership[]>(
-            `/api/repositories/${state.repoId}/ownership?limit=30`,
-          ),
-          apiGet<BusFactor[]>(
-            `/api/repositories/${state.repoId}/bus-factor?limit=10`,
-          ),
-        ]);
-        setOwnership(ownershipData);
-        setBusFactor(busFactorData);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Unable to load ownership.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
-  }, [state.repoId]);
+  const loading =
+    ownershipLoading ||
+    ownershipFetching ||
+    busFactorLoading ||
+    busFactorFetching;
+  const errorMessage =
+    ownershipError instanceof Error
+      ? ownershipError.message
+      : busFactorError instanceof Error
+        ? busFactorError.message
+        : ownershipError || busFactorError
+          ? "Unable to load ownership."
+          : null;
 
   const shareSorted = useMemo(
     () =>
@@ -482,9 +490,9 @@ export default function OwnershipPage() {
               >
                 Export CSV
               </button>
-              {error ? (
+              {errorMessage ? (
                 <span className="text-xs text-[color:var(--risk)]">
-                  {error}
+                  {errorMessage}
                 </span>
               ) : null}
             </div>

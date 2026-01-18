@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import BarChart from "@/components/charts/BarChart";
 import { apiGet } from "@/lib/api";
 import { downloadCsv } from "@/lib/csv";
@@ -22,12 +23,30 @@ const toNumber = (value: number | string) => {
 
 export default function FragilityPage() {
   const { state } = useAnalysisState();
-  const [fragility, setFragility] = useState<Fragility[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("index");
   const [limit, setLimit] = useState(25);
+  const {
+    data: fragility = [],
+    isLoading,
+    isFetching,
+    error,
+  } = useQuery({
+    queryKey: ["fragility", state.repoId, 50],
+    queryFn: () =>
+      apiGet<Fragility[]>(
+        `/api/repositories/${state.repoId}/fragility?limit=50`,
+      ),
+    enabled: Boolean(state.repoId),
+    placeholderData: (previous) => previous ?? [],
+  });
+
+  const errorMessage =
+    error instanceof Error
+      ? error.message
+      : error
+        ? "Unable to load fragility."
+        : null;
   const indexSorted = useMemo(
     () =>
       [...fragility].sort(
@@ -115,31 +134,6 @@ export default function FragilityPage() {
     () => filteredFragility.slice(0, limit),
     [filteredFragility, limit],
   );
-
-  useEffect(() => {
-    if (!state.repoId) {
-      return;
-    }
-
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await apiGet<Fragility[]>(
-          `/api/repositories/${state.repoId}/fragility?limit=50`,
-        );
-        setFragility(data);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Unable to load fragility.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
-  }, [state.repoId]);
 
   if (!state.repoId) {
     return (
@@ -258,7 +252,9 @@ export default function FragilityPage() {
           </div>
         ) : (
           <p className="mt-4 text-sm text-[color:var(--muted)]">
-            {loading ? "Loading fragility data..." : "No fragility data yet."}
+            {isLoading || isFetching
+              ? "Loading fragility data..."
+              : "No fragility data yet."}
           </p>
         )}
       </section>
@@ -321,8 +317,10 @@ export default function FragilityPage() {
             >
               Export CSV
             </button>
-            {error ? (
-              <span className="text-xs text-[color:var(--risk)]">{error}</span>
+            {errorMessage ? (
+              <span className="text-xs text-[color:var(--risk)]">
+                {errorMessage}
+              </span>
             ) : null}
           </div>
         </div>
@@ -364,7 +362,7 @@ export default function FragilityPage() {
                     className="px-3 py-6 text-sm text-[color:var(--muted)]"
                     colSpan={4}
                   >
-                    {loading
+                    {isLoading || isFetching
                       ? "Loading fragility data..."
                       : "No fragility data available."}
                   </td>

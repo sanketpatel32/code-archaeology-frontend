@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import BarChart from "@/components/charts/BarChart";
 import { apiGet } from "@/lib/api";
 import { downloadCsv } from "@/lib/csv";
@@ -33,40 +34,31 @@ const TILE_COLORS = [
 
 export default function HotspotsPage() {
   const { state } = useAnalysisState();
-  const [hotspots, setHotspots] = useState<Hotspot[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("score");
   const [intensityMetric, setIntensityMetric] =
     useState<IntensityMetric>("score");
   const [limit, setLimit] = useState(25);
   const [focusedPath, setFocusedPath] = useState<string | null>(null);
+  const {
+    data: hotspots = [],
+    isLoading,
+    isFetching,
+    error,
+  } = useQuery({
+    queryKey: ["hotspots", state.repoId, 50],
+    queryFn: () =>
+      apiGet<Hotspot[]>(`/api/repositories/${state.repoId}/hotspots?limit=50`),
+    enabled: Boolean(state.repoId),
+    placeholderData: (previous) => previous ?? [],
+  });
 
-  useEffect(() => {
-    if (!state.repoId) {
-      return;
-    }
-
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await apiGet<Hotspot[]>(
-          `/api/repositories/${state.repoId}/hotspots?limit=50`,
-        );
-        setHotspots(data);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Unable to load hotspots.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
-  }, [state.repoId]);
+  const errorMessage =
+    error instanceof Error
+      ? error.message
+      : error
+        ? "Unable to load hotspots."
+        : null;
 
   const scoreSorted = useMemo(
     () =>
@@ -288,7 +280,9 @@ export default function HotspotsPage() {
           </div>
         ) : (
           <p className="mt-4 text-sm text-[color:var(--muted)]">
-            {loading ? "Loading hotspots..." : "No hotspots available yet."}
+            {isLoading || isFetching
+              ? "Loading hotspots..."
+              : "No hotspots available yet."}
           </p>
         )}
       </section>
@@ -334,7 +328,9 @@ export default function HotspotsPage() {
             </div>
           ) : (
             <p className="mt-4 text-sm text-[color:var(--muted)]">
-              {loading ? "Loading hotspots..." : "No hotspots available yet."}
+              {isLoading || isFetching
+                ? "Loading hotspots..."
+                : "No hotspots available yet."}
             </p>
           )}
         </div>
@@ -385,7 +381,9 @@ export default function HotspotsPage() {
             </div>
           ) : (
             <p className="mt-4 text-sm text-[color:var(--muted)]">
-              {loading ? "Loading focus file..." : "No hotspot data yet."}
+              {isLoading || isFetching
+                ? "Loading focus file..."
+                : "No hotspot data yet."}
             </p>
           )}
         </div>
@@ -449,8 +447,10 @@ export default function HotspotsPage() {
             >
               Export CSV
             </button>
-            {error ? (
-              <span className="text-xs text-[color:var(--risk)]">{error}</span>
+            {errorMessage ? (
+              <span className="text-xs text-[color:var(--risk)]">
+                {errorMessage}
+              </span>
             ) : null}
           </div>
         </div>
@@ -492,7 +492,9 @@ export default function HotspotsPage() {
                     className="px-3 py-6 text-sm text-[color:var(--muted)]"
                     colSpan={4}
                   >
-                    {loading ? "Loading hotspots..." : "No hotspots available."}
+                    {isLoading || isFetching
+                      ? "Loading hotspots..."
+                      : "No hotspots available."}
                   </td>
                 </tr>
               )}

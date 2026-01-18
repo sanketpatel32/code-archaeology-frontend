@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import DonutChart from "@/components/charts/DonutChart";
 import { apiGet } from "@/lib/api";
 import { downloadCsv } from "@/lib/csv";
@@ -70,37 +71,28 @@ const getCategoryTone = (category: string): Tone => {
 
 export default function InsightsPage() {
   const { state } = useAnalysisState();
-  const [insights, setInsights] = useState<Insight[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
   const [severityFilter, setSeverityFilter] = useState("all");
   const [query, setQuery] = useState("");
+  const {
+    data: insights = [],
+    isLoading,
+    isFetching,
+    error,
+  } = useQuery({
+    queryKey: ["insights", state.repoId, 50],
+    queryFn: () =>
+      apiGet<Insight[]>(`/api/repositories/${state.repoId}/insights?limit=50`),
+    enabled: Boolean(state.repoId),
+    placeholderData: (previous) => previous ?? [],
+  });
 
-  useEffect(() => {
-    if (!state.repoId) {
-      return;
-    }
-
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await apiGet<Insight[]>(
-          `/api/repositories/${state.repoId}/insights?limit=50`,
-        );
-        setInsights(data);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Unable to load insights.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
-  }, [state.repoId]);
+  const errorMessage =
+    error instanceof Error
+      ? error.message
+      : error
+        ? "Unable to load insights."
+        : null;
 
   const filteredInsights = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -122,7 +114,7 @@ export default function InsightsPage() {
         insight.category.toLowerCase().includes(normalized) ||
         insight.severity.toLowerCase().includes(normalized),
     );
-  }, [filter, insights, query]);
+  }, [filter, insights, query, severityFilter]);
   const severitySummary = useMemo(() => {
     const summary = insights.reduce(
       (acc, insight) => {
@@ -427,9 +419,9 @@ export default function InsightsPage() {
           </div>
         </div>
 
-        {error ? (
+        {errorMessage ? (
           <div className="alert-error mt-4 rounded-xl px-3 py-2 text-xs">
-            {error}
+            {errorMessage}
           </div>
         ) : null}
 
@@ -474,7 +466,9 @@ export default function InsightsPage() {
             })
           ) : (
             <p className="text-sm text-[color:var(--muted)]">
-              {loading ? "Loading insights..." : "No insights available."}
+              {isLoading || isFetching
+                ? "Loading insights..."
+                : "No insights available."}
             </p>
           )}
         </div>

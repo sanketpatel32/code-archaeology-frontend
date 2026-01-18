@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import TimelineChart from "@/components/charts/TimelineChart";
 import TreemapChart, {
   type TreemapNode,
@@ -133,21 +134,83 @@ const buildTreemapData = (rows: Hotspot[]): TreemapNode => {
 export default function OverviewPage() {
   const { state, update } = useAnalysisState();
   const { run, error: runError, statusTone } = useAnalysisRun(state.runId);
+  const queryClient = useQueryClient();
 
   const [repoUrl, setRepoUrl] = useState(state.repoUrl ?? "");
   const [branch, setBranch] = useState(state.branch ?? "");
   const [maxCommits, setMaxCommits] = useState("");
-  const [summary, setSummary] = useState<SummaryResponse | null>(null);
-  const [hotspots, setHotspots] = useState<Hotspot[]>([]);
-  const [timeline, setTimeline] = useState<TimelineBucket[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [metricsLoaded, setMetricsLoaded] = useState(false);
   const [activityFocus, setActivityFocus] =
     useState<ActivityFocus>("commits");
   const [focusPath, setFocusPath] = useState<string | null>(null);
 
   const repoLabel = formatRepoLabel(state.repoUrl);
+
+  useEffect(() => {
+    if (state.repoUrl && !repoUrl) {
+      setRepoUrl(state.repoUrl);
+    }
+  }, [state.repoUrl, repoUrl]);
+
+  useEffect(() => {
+    if (state.branch && !branch) {
+      setBranch(state.branch);
+    }
+  }, [state.branch, branch]);
+
+  useEffect(() => {
+    if (state.repoId) {
+      setFocusPath(null);
+    }
+  }, [state.repoId]);
+
+  const metricsEnabled = Boolean(state.repoId && run?.status === "succeeded");
+  const {
+    data: summary,
+    isLoading: summaryLoading,
+    error: summaryError,
+  } = useQuery({
+    queryKey: ["summary", state.repoId],
+    queryFn: () =>
+      apiGet<SummaryResponse>(`/api/repositories/${state.repoId}/summary`),
+    enabled: metricsEnabled,
+    placeholderData: (previous) => previous ?? null,
+  });
+
+  const {
+    data: hotspots = [],
+    isLoading: hotspotsLoading,
+    error: hotspotsError,
+  } = useQuery({
+    queryKey: ["hotspots", state.repoId, 70],
+    queryFn: () =>
+      apiGet<Hotspot[]>(`/api/repositories/${state.repoId}/hotspots?limit=70`),
+    enabled: metricsEnabled,
+    placeholderData: (previous) => previous ?? [],
+  });
+
+  const {
+    data: timeline = [],
+    isLoading: timelineLoading,
+    error: timelineError,
+  } = useQuery({
+    queryKey: ["timeline", state.repoId],
+    queryFn: () =>
+      apiGet<TimelineBucket[]>(`/api/repositories/${state.repoId}/timeline`),
+    enabled: metricsEnabled,
+    placeholderData: (previous) => previous ?? [],
+  });
+
+  const metricsError =
+    summaryError || hotspotsError || timelineError || runError;
+  const metricsLoading = summaryLoading || hotspotsLoading || timelineLoading;
+  const metricsErrorMessage =
+    metricsError instanceof Error
+      ? metricsError.message
+      : metricsError
+        ? "Unable to load metrics."
+        : null;
   const sortedHotspots = useMemo(
     () =>
       [...hotspots].sort(
@@ -178,31 +241,6 @@ export default function OverviewPage() {
         : { label: "Pending", bg: "var(--panel-soft)", color: "var(--muted)" },
     [riskIndex, topHotspot],
   );
-
-  useEffect(() => {
-    if (state.repoUrl && !repoUrl) {
-      setRepoUrl(state.repoUrl);
-    }
-  }, [state.repoUrl, repoUrl]);
-
-  useEffect(() => {
-    if (state.branch && !branch) {
-      setBranch(state.branch);
-    }
-  }, [state.branch, branch]);
-
-  useEffect(() => {
-    if (runError) {
-      setError(runError);
-    }
-  }, [runError]);
-
-  useEffect(() => {
-    if (state.repoId) {
-      setMetricsLoaded(false);
-      setFocusPath(null);
-    }
-  }, [state.repoId]);
 
   const timelineStats = useMemo(() => {
     if (!timeline.length) {
@@ -351,45 +389,15 @@ export default function OverviewPage() {
     [sortedHotspots],
   );
 
-  useEffect(() => {
-    if (!state.repoId || !run || run.status !== "succeeded" || metricsLoaded) {
-      return;
-    }
-
-    const loadMetrics = async () => {
-      try {
-        const [summaryData, hotspotsData, timelineData] = await Promise.all([
-          apiGet<SummaryResponse>(`/api/repositories/${state.repoId}/summary`),
-          apiGet<Hotspot[]>(
-            `/api/repositories/${state.repoId}/hotspots?limit=70`,
-          ),
-          apiGet<TimelineBucket[]>(
-            `/api/repositories/${state.repoId}/timeline`,
-          ),
-        ]);
-
-        setSummary(summaryData);
-        setHotspots(hotspotsData);
-        setTimeline(timelineData);
-        setMetricsLoaded(true);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Unable to load metrics.",
-        );
-      }
-    };
-
-    loadMetrics();
-  }, [state.repoId, run, metricsLoaded]);
-
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     setLoading(true);
-    setMetricsLoaded(false);
-    setSummary(null);
-    setHotspots([]);
-    setTimeline([]);
+    if (state.repoId) {
+      queryClient.removeQueries({ queryKey: ["summary", state.repoId] });
+      queryClient.removeQueries({ queryKey: ["hotspots", state.repoId] });
+      queryClient.removeQueries({ queryKey: ["timeline", state.repoId] });
+    }
 
     try {
       const payload: { repoUrl: string; branch?: string; maxCommits?: number } =
@@ -603,9 +611,9 @@ export default function OverviewPage() {
             </button>
           </form>
 
-          {error ? (
+          {metricsErrorMessage || error ? (
             <div className="alert-error mt-4 rounded-xl px-3 py-2 text-xs">
-              {error}
+              {metricsErrorMessage ?? error}
             </div>
           ) : null}
         </section>
@@ -690,7 +698,9 @@ export default function OverviewPage() {
               </>
             ) : (
               <p className="text-sm text-[color:var(--muted)]">
-                Timeline data will appear after analysis completes.
+                {metricsLoading
+                  ? "Loading timeline..."
+                  : "Timeline data will appear after analysis completes."}
               </p>
             )}
           </div>
@@ -805,10 +815,12 @@ export default function OverviewPage() {
                   />
                 </div>
               ) : (
-              <p className="text-sm text-[color:var(--muted)]">
-                Run an analysis to build the hotspot map.
-              </p>
-            )}
+                <p className="text-sm text-[color:var(--muted)]">
+                  {metricsLoading
+                    ? "Loading hotspot map..."
+                    : "Run an analysis to build the hotspot map."}
+                </p>
+              )}
           </div>
           <div className="panel-muted grid gap-3 rounded-2xl p-4 text-sm text-[color:var(--muted)]">
               <div>

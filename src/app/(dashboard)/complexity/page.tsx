@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import BarChart from "@/components/charts/BarChart";
 import { apiGet } from "@/lib/api";
 import { downloadCsv } from "@/lib/csv";
@@ -36,37 +37,30 @@ const getNestingTone = (value: number) => {
 
 export default function ComplexityPage() {
   const { state } = useAnalysisState();
-  const [complexity, setComplexity] = useState<Complexity[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("nesting");
   const [limit, setLimit] = useState(25);
+  const {
+    data: complexity = [],
+    isLoading,
+    isFetching,
+    error,
+  } = useQuery({
+    queryKey: ["complexity", state.repoId, 40],
+    queryFn: () =>
+      apiGet<Complexity[]>(
+        `/api/repositories/${state.repoId}/complexity?limit=40`,
+      ),
+    enabled: Boolean(state.repoId),
+    placeholderData: (previous) => previous ?? [],
+  });
 
-  useEffect(() => {
-    if (!state.repoId) {
-      return;
-    }
-
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await apiGet<Complexity[]>(
-          `/api/repositories/${state.repoId}/complexity?limit=40`,
-        );
-        setComplexity(data);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Unable to load complexity.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
-  }, [state.repoId]);
+  const errorMessage =
+    error instanceof Error
+      ? error.message
+      : error
+        ? "Unable to load complexity."
+        : null;
 
   const totalLines = useMemo(
     () => complexity.reduce((sum, row) => sum + (row.lines || 0), 0),
@@ -427,7 +421,9 @@ export default function ComplexityPage() {
           </div>
         ) : (
           <p className="mt-4 text-sm text-[color:var(--muted)]">
-            {loading ? "Loading complexity data..." : "No complexity data yet."}
+            {isLoading || isFetching
+              ? "Loading complexity data..."
+              : "No complexity data yet."}
           </p>
         )}
       </section>
@@ -491,8 +487,10 @@ export default function ComplexityPage() {
             >
               Export CSV
             </button>
-            {error ? (
-              <span className="text-xs text-[color:var(--risk)]">{error}</span>
+            {errorMessage ? (
+              <span className="text-xs text-[color:var(--risk)]">
+                {errorMessage}
+              </span>
             ) : null}
           </div>
         </div>
@@ -538,7 +536,7 @@ export default function ComplexityPage() {
                     className="px-3 py-6 text-sm text-[color:var(--muted)]"
                     colSpan={5}
                   >
-                    {loading
+                    {isLoading || isFetching
                       ? "Loading complexity snapshots..."
                       : "No complexity data available."}
                   </td>

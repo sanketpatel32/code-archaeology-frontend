@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
 import { formatDate, formatNumber } from "@/lib/format";
 import { useAnalysisState } from "@/lib/useAnalysisState";
@@ -108,38 +109,36 @@ const CLASSIFICATION_OPTIONS = [
 
 export default function CommitsPage() {
   const { state } = useAnalysisState();
-  const [commits, setCommits] = useState<CommitRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] =
     useState<(typeof CLASSIFICATION_OPTIONS)[number]>("all");
   const [limit, setLimit] = useState(100);
 
-  useEffect(() => {
-    if (!state.repoId) {
-      return;
-    }
-
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await apiGet<CommitRow[]>(
-          `/api/repositories/${state.repoId}/commits?limit=${limit}`,
-        );
-        setCommits(data);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Unable to load commits.",
-        );
-      } finally {
-        setLoading(false);
+  const {
+    data: commits = [],
+    isLoading,
+    isFetching,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["commits", state.repoId, limit],
+    queryFn: async () => {
+      if (!state.repoId) {
+        return [];
       }
-    };
+      return apiGet<CommitRow[]>(
+        `/api/repositories/${state.repoId}/commits?limit=${limit}`,
+      );
+    },
+    enabled: Boolean(state.repoId),
+    placeholderData: (previous) => previous ?? [],
+  });
 
-    load();
-  }, [state.repoId, limit]);
+  const errorMessage = isError
+    ? error instanceof Error
+      ? error.message
+      : "Unable to load commits."
+    : null;
 
   const filteredCommits = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -288,12 +287,14 @@ export default function CommitsPage() {
             })
           ) : (
             <p className="text-sm text-[color:var(--muted)]">
-              {loading ? "Loading commits..." : "No commits found."}
+              {isLoading || isFetching
+                ? "Loading commits..."
+                : "No commits found."}
             </p>
           )}
-          {error ? (
+          {errorMessage ? (
             <div className="alert-error rounded-xl px-3 py-2 text-xs">
-              {error}
+              {errorMessage}
             </div>
           ) : null}
         </div>

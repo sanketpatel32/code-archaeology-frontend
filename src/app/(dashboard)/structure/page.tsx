@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
 import { useAnalysisState } from "@/lib/useAnalysisState";
 
@@ -139,27 +140,33 @@ function TreeItem({
 
 export default function StructurePage() {
     const { state } = useAnalysisState();
-    const [files, setFiles] = useState<FileData[]>([]);
-    const [loading, setLoading] = useState(false);
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const [search, setSearch] = useState("");
+    const {
+        data: files = [],
+        isLoading,
+        isFetching,
+    } = useQuery({
+        queryKey: ["structure-files", state.repoId],
+        queryFn: () =>
+            apiGet<FileData[]>(`/api/repositories/${state.repoId}/hotspots?limit=1000`),
+        enabled: Boolean(state.repoId),
+        placeholderData: (previous) => previous ?? [],
+    });
 
     useEffect(() => {
         if (!state.repoId) return;
-        setLoading(true);
-        apiGet<FileData[]>(`/api/repositories/${state.repoId}/hotspots?limit=1000`)
-            .then((data) => {
-                setFiles(data);
-                const firstLevel = new Set<string>();
-                for (const file of data) {
-                    const parts = file.file_path.split("/");
-                    if (parts.length > 1) firstLevel.add(parts[0]);
-                }
-                setExpanded(firstLevel);
-            })
-            .catch(() => setFiles([]))
-            .finally(() => setLoading(false));
-    }, [state.repoId]);
+        if (!files.length) {
+            setExpanded(new Set());
+            return;
+        }
+        const firstLevel = new Set<string>();
+        for (const file of files) {
+            const parts = file.file_path.split("/");
+            if (parts.length > 1) firstLevel.add(parts[0]);
+        }
+        setExpanded(firstLevel);
+    }, [files, state.repoId]);
 
     const tree = useMemo(() => buildTree(files), [files]);
 
@@ -250,15 +257,15 @@ export default function StructurePage() {
                     </button>
                 </div>
 
-                {loading && (
+                {(isLoading || isFetching) && (
                     <div className="py-12 text-center text-sm text-[color:var(--muted)]">Loading...</div>
                 )}
-                {!loading && filteredTree.children.length === 0 && (
+                {!isLoading && !isFetching && filteredTree.children.length === 0 && (
                     <div className="py-12 text-center text-sm text-[color:var(--muted)]">
                         {search ? "No matches found" : "No files found"}
                     </div>
                 )}
-                {!loading && filteredTree.children.length > 0 && (
+                {!isLoading && !isFetching && filteredTree.children.length > 0 && (
                     <div className="max-h-[70vh] overflow-auto font-mono text-sm">
                         {filteredTree.children.map((child, index) => (
                             <TreeItem

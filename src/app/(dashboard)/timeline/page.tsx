@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import BarChart from "@/components/charts/BarChart";
 import TimelineChart from "@/components/charts/TimelineChart";
 import { apiGet } from "@/lib/api";
@@ -103,19 +104,74 @@ const getMomentumTone = (delta: number | null): Tone => {
 
 export default function TimelinePage() {
   const { state } = useAnalysisState();
-  const [timeline, setTimeline] = useState<TimelineBucket[]>([]);
-  const [classification, setClassification] = useState<ClassificationBucket[]>(
-    [],
-  );
-  const [branchTimeline, setBranchTimeline] = useState<BranchTimeline[]>([]);
-  const [branchRange, setBranchRange] = useState<BranchTimelineResponse["range"] | null>(null);
-  const [branchError, setBranchError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [pulseMetric, setPulseMetric] = useState<PulseMetric>("commits");
   const [classificationMetric, setClassificationMetric] =
     useState<ClassificationMetric>("feat");
   const [branchFocus, setBranchFocus] = useState<string>("");
+  const {
+    data: timeline = [],
+    isLoading: timelineLoading,
+    isFetching: timelineFetching,
+    error: timelineError,
+  } = useQuery({
+    queryKey: ["timeline", state.repoId],
+    queryFn: () =>
+      apiGet<TimelineBucket[]>(`/api/repositories/${state.repoId}/timeline`),
+    enabled: Boolean(state.repoId),
+    placeholderData: (previous) => previous ?? [],
+  });
+  const {
+    data: classification = [],
+    isLoading: classificationLoading,
+    isFetching: classificationFetching,
+    error: classificationError,
+  } = useQuery({
+    queryKey: ["timeline-classification", state.repoId],
+    queryFn: () =>
+      apiGet<ClassificationBucket[]>(
+        `/api/repositories/${state.repoId}/timeline-classification`,
+      ),
+    enabled: Boolean(state.repoId),
+    placeholderData: (previous) => previous ?? [],
+  });
+  const {
+    data: branchData,
+    isLoading: branchLoading,
+    isFetching: branchFetching,
+    error: branchError,
+  } = useQuery({
+    queryKey: ["timeline-branches", state.repoId, 24, 6],
+    queryFn: () =>
+      apiGet<BranchTimelineResponse>(
+        `/api/repositories/${state.repoId}/timeline-branches?weeks=24&limit=6`,
+      ),
+    enabled: Boolean(state.repoId),
+    placeholderData: (previous) => previous ?? null,
+  });
+
+  const branchTimeline = branchData?.branches ?? [];
+  const branchRange = branchData?.range ?? null;
+  const loading =
+    timelineLoading ||
+    timelineFetching ||
+    classificationLoading ||
+    classificationFetching ||
+    branchLoading ||
+    branchFetching;
+  const errorMessage =
+    timelineError instanceof Error
+      ? timelineError.message
+      : classificationError instanceof Error
+        ? classificationError.message
+        : timelineError || classificationError
+          ? "Unable to load timeline."
+          : null;
+  const branchErrorMessage =
+    branchError instanceof Error
+      ? branchError.message
+      : branchError
+        ? "Unable to load branch activity."
+        : null;
 
   useEffect(() => {
     if (!branchTimeline.length) {
@@ -125,54 +181,6 @@ export default function TimelinePage() {
       setBranchFocus(branchTimeline[0]?.name ?? "");
     }
   }, [branchTimeline, branchFocus]);
-
-  useEffect(() => {
-    if (!state.repoId) {
-      return;
-    }
-
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [timelineData, classificationData] = await Promise.all([
-          apiGet<TimelineBucket[]>(
-            `/api/repositories/${state.repoId}/timeline`,
-          ),
-          apiGet<ClassificationBucket[]>(
-            `/api/repositories/${state.repoId}/timeline-classification`,
-          ),
-        ]);
-        setTimeline(timelineData);
-        setClassification(classificationData);
-        try {
-          const branchData = await apiGet<BranchTimelineResponse>(
-            `/api/repositories/${state.repoId}/timeline-branches?weeks=24&limit=6`,
-          );
-          setBranchTimeline(branchData.branches);
-          setBranchRange(branchData.range);
-          setBranchFocus((current) => current || branchData.branches[0]?.name || "");
-          setBranchError(null);
-        } catch (branchErr) {
-          setBranchTimeline([]);
-          setBranchRange(null);
-          setBranchError(
-            branchErr instanceof Error
-              ? branchErr.message
-              : "Unable to load branch activity.",
-          );
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Unable to load timeline.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
-  }, [state.repoId]);
 
   const timelineStats = useMemo(() => {
     if (!timeline.length) {
@@ -560,9 +568,9 @@ export default function TimelinePage() {
                   </span>
                 </div>
               </div>
-              {error ? (
+              {errorMessage ? (
                 <div className="alert-error rounded-xl px-3 py-2 text-xs">
-                  {error}
+                  {errorMessage}
                 </div>
               ) : null}
             </div>
@@ -653,9 +661,9 @@ export default function TimelinePage() {
                   {branchStats ? formatNumber(branchStats.peak.value) : "--"}
                 </span>
               </div>
-              {branchError ? (
+              {branchErrorMessage ? (
                 <div className="alert-error rounded-xl px-3 py-2 text-xs">
-                  {branchError}
+                  {branchErrorMessage}
                 </div>
               ) : null}
             </div>
