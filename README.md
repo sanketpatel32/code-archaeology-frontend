@@ -1,168 +1,178 @@
-# 🏛️ Code Archaeology - Frontend
+<p align="center">
+  <img src="https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js" alt="Next.js" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react" alt="React" />
+  <img src="https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Bun-Runtime-F9F1E1?style=for-the-badge&logo=bun" alt="Bun" />
+</p>
 
-A modern, beautiful dashboard for visualizing your repository's hidden history. Built with Next.js 15 and React 19, featuring stunning data visualizations and real-time analysis updates.
+<h1 align="center">🏛️ Code Archaeology</h1>
+
+<p align="center">
+  <strong>Uncover the hidden history of your codebase</strong>
+</p>
+
+<p align="center">
+  A beautiful, modern dashboard that reveals patterns in your repository's evolution.<br/>
+  Track hotspots, ownership, complexity trends, and technical debt with stunning visualizations.
+</p>
+
+<p align="center">
+  <a href="#-features">Features</a> •
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-tech-stack">Tech Stack</a> •
+  <a href="#-deployment">Deployment</a>
+</p>
+
+---
 
 ## ✨ Features
 
-- **📊 Interactive Dashboard** - Beautiful overview of repository health
-- **🔥 Hotspot Treemap** - Visual representation of code change concentration
-- **📈 Timeline Charts** - Commit activity and churn trends over time
-- **👥 Ownership Analysis** - Team contribution breakdown and bus factor
-- **📉 Complexity Trends** - Track technical debt evolution
-- **💡 AI Insights** - Automated recommendations for code health
-- **🎨 Dark Mode** - Stunning glassmorphism design
+<table>
+<tr>
+<td width="50%">
 
-## 🛠️ Tech Stack
+### 📊 Dashboard Overview
+Real-time metrics showing delivery tempo, change load, and risk index at a glance.
 
-- **Framework**: [Next.js 15](https://nextjs.org) with App Router
-- **UI**: React 19 with Tailwind-free custom CSS
-- **Charts**: D3.js + Recharts for data visualization
-- **State**: TanStack Query for server state
-- **Runtime**: [Bun](https://bun.sh) for fast development
+### 🔥 Hotspot Analysis  
+Interactive treemap revealing where code changes concentrate most frequently.
+
+### 📈 Timeline Charts
+Beautiful D3.js visualizations of commit activity and code churn over time.
+
+</td>
+<td width="50%">
+
+### 👥 Ownership Tracking
+Understand who owns what code and identify bus factor risks before they become problems.
+
+### 📉 Complexity Trends
+Track cyclomatic complexity evolution and spot technical debt accumulation.
+
+### 💡 AI Insights
+Automated recommendations powered by pattern analysis across your codebase.
+
+</td>
+</tr>
+</table>
 
 ## 🚀 Quick Start
-
-### Prerequisites
-
-- [Bun](https://bun.sh) v1.0+ or Node.js 18+
-- Running backend API
-
-### Installation
 
 ```bash
 # Clone the repository
 git clone https://github.com/sanketpatel32/code-archaeology-frontend.git
+
+# Navigate to project
 cd code-archaeology-frontend
 
 # Install dependencies
 bun install
 
-# Set up environment variables
+# Set up environment
 cp .env.example .env.local
-# Edit .env.local with your API URL
-```
 
-### Environment Variables
-
-```env
-# Backend API URL
-NEXT_PUBLIC_API_URL=http://localhost:3001
-
-# For production (example)
-NEXT_PUBLIC_API_URL=https://your-api-domain.com
-```
-
-### Running Locally
-
-```bash
 # Start development server
 bun run dev
-
-# Open http://localhost:3000
 ```
 
-### Available Scripts
+Open [http://localhost:3000](http://localhost:3000) to see the dashboard.
 
-| Script | Description |
-|--------|-------------|
-| `bun run dev` | Start dev server with hot reload |
-| `bun run build` | Build for production |
-| `bun run start` | Start production server |
-| `bun run lint` | Run ESLint |
+## ⚙️ Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NEXT_PUBLIC_API_URL` | Backend API URL | `http://localhost:3001` |
+
+## 🛠️ Tech Stack
+
+| Category | Technology |
+|----------|------------|
+| **Framework** | Next.js 15 (App Router) |
+| **UI Library** | React 19 |
+| **Language** | TypeScript 5 |
+| **Styling** | Custom CSS (no Tailwind) |
+| **Charts** | D3.js + Recharts |
+| **State** | TanStack Query |
+| **Runtime** | Bun |
 
 ## 📁 Project Structure
 
 ```
-client/
-├── src/
-│   ├── app/                 # Next.js App Router pages
-│   │   ├── (dashboard)/     # Dashboard routes
-│   │   │   ├── page.tsx           # Overview
-│   │   │   ├── hotspots/          # Hotspot analysis
-│   │   │   ├── timeline/          # Activity timeline
-│   │   │   ├── ownership/         # Code ownership
-│   │   │   ├── complexity/        # Complexity trends
-│   │   │   ├── quality/           # Code quality
-│   │   │   └── insights/          # AI recommendations
-│   │   └── layout.tsx       # Root layout
-│   ├── components/
-│   │   ├── charts/          # D3 & Recharts components
-│   │   ├── layout/          # Navigation, sidebar
-│   │   └── ui/              # Reusable UI components
-│   └── lib/
-│       ├── api.ts           # API client
-│       ├── format.ts        # Formatting utilities
-│       └── hooks/           # Custom React hooks
-├── public/                  # Static assets
-├── Dockerfile              # Production container
-└── next.config.ts          # Next.js configuration
+src/
+├── app/                    # Next.js App Router
+│   ├── (dashboard)/        # Dashboard pages
+│   │   ├── page.tsx        # Overview
+│   │   ├── hotspots/       # Hotspot analysis
+│   │   ├── timeline/       # Activity timeline
+│   │   ├── ownership/      # Code ownership
+│   │   ├── complexity/     # Complexity trends
+│   │   ├── quality/        # Code quality
+│   │   └── insights/       # AI recommendations
+│   └── layout.tsx
+├── components/
+│   ├── charts/             # D3 & Recharts
+│   └── layout/             # Navigation
+└── lib/
+    ├── api.ts              # API client
+    └── hooks/              # Custom hooks
 ```
 
-## 📱 Pages
+## 📱 Routes
 
 | Route | Description |
 |-------|-------------|
-| `/` | Dashboard overview with key metrics |
-| `/hotspots` | File hotspot analysis with treemap |
-| `/timeline` | Commit activity over time |
-| `/ownership` | Code ownership and bus factor |
-| `/complexity` | Cyclomatic complexity trends |
-| `/quality` | Code quality report (JS/TS) |
-| `/insights` | AI-powered recommendations |
-| `/fragility` | File coupling analysis |
-| `/commits` | Detailed commit history |
+| `/` | Dashboard with key metrics |
+| `/hotspots` | File hotspot treemap |
+| `/timeline` | Commit activity charts |
+| `/ownership` | Team contributions |
+| `/complexity` | Complexity trends |
+| `/quality` | Code quality report |
+| `/insights` | AI recommendations |
+| `/fragility` | File coupling |
+| `/commits` | Commit history |
 
-## 🐳 Docker Deployment
+## 🐳 Deployment
 
-### Build Image
+### Vercel (Recommended)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/sanketpatel32/code-archaeology-frontend)
+
+1. Import repository to Vercel
+2. Add environment variable: `NEXT_PUBLIC_API_URL`
+3. Deploy!
+
+### Docker
 
 ```bash
-# Build with API URL
 docker build \
   --build-arg NEXT_PUBLIC_API_URL=https://your-api.com \
   -t code-archaeology-frontend .
 ```
 
-### Deploy to Vercel
+## 📜 Scripts
 
-1. Import repository to Vercel
-2. Add environment variable: `NEXT_PUBLIC_API_URL`
-3. Deploy automatically on push
+| Command | Description |
+|---------|-------------|
+| `bun run dev` | Start dev server |
+| `bun run build` | Production build |
+| `bun run start` | Start production |
+| `bun run lint` | Run ESLint |
 
-### Vercel Settings
+## 🎨 Design
 
-| Setting | Value |
-|---------|-------|
-| Framework | Next.js |
-| Build Command | `bun run build` |
-| Output Directory | `.next` (auto-detected) |
-| Install Command | `bun install` |
-
-## 🎨 Design System
-
-The app uses a custom design system with:
-
-- **Colors**: CSS custom properties for theming
+- **Theme**: Dark mode with glassmorphism
 - **Typography**: Inter font family
-- **Components**: Glassmorphism panels, animated transitions
-- **Charts**: Consistent color palette across visualizations
-
-## 🔧 Configuration
-
-### Next.js Config
-
-```typescript
-// next.config.ts
-const nextConfig = {
-  output: "standalone",  // Optimized for Docker
-  reactCompiler: true,   // React 19 compiler
-};
-```
-
-## 📝 License
-
-MIT License - See [LICENSE](LICENSE) for details.
+- **Animations**: Smooth micro-interactions
+- **Colors**: Consistent palette across charts
 
 ---
 
-Built with ❤️ by [Sanket Patel](https://github.com/sanketpatel32)
+<p align="center">
+  Built with ❤️ by <a href="https://github.com/sanketpatel32">Sanket Patel</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/sanketpatel32/code-archaeology-frontend/stargazers">⭐ Star this repo</a> •
+  <a href="https://github.com/sanketpatel32/code-archaeology-frontend/issues">🐛 Report Bug</a> •
+  <a href="https://github.com/sanketpatel32/code-archaeology-frontend/issues">💡 Request Feature</a>
+</p>
