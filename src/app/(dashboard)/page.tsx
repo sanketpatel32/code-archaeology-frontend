@@ -175,7 +175,7 @@ export default function OverviewPage() {
     queryFn: () =>
       apiGet<SummaryResponse>(`/api/repositories/${state.repoId}/summary`),
     enabled: metricsEnabled,
-    placeholderData: (previous) => previous ?? null,
+    placeholderData: (previous) => previous,
   });
 
   const {
@@ -804,57 +804,57 @@ export default function OverviewPage() {
         </div>
         <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
           <div className="panel-muted rounded-2xl p-4">
-              {sortedHotspots.length ? (
-                <div className="h-72">
-                  <TreemapChart
-                    data={treemapData}
-                    selectedPath={focusPath}
-                    onSelect={(path) =>
-                      setFocusPath((prev) => (prev === path ? null : path))
-                    }
-                  />
-                </div>
-              ) : (
-                <p className="text-sm text-[color:var(--muted)]">
-                  {metricsLoading
-                    ? "Loading hotspot map..."
-                    : "Run an analysis to build the hotspot map."}
-                </p>
-              )}
+            {sortedHotspots.length ? (
+              <div className="h-72">
+                <TreemapChart
+                  data={treemapData}
+                  selectedPath={focusPath}
+                  onSelect={(path) =>
+                    setFocusPath((prev) => (prev === path ? null : path))
+                  }
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-[color:var(--muted)]">
+                {metricsLoading
+                  ? "Loading hotspot map..."
+                  : "Run an analysis to build the hotspot map."}
+              </p>
+            )}
           </div>
           <div className="panel-muted grid gap-3 rounded-2xl p-4 text-sm text-[color:var(--muted)]">
-              <div>
-                <span className="text-xs uppercase tracking-[0.2em]">
-                  Focus file
-                </span>
-                <div
-                  className="truncate-1 mt-2 font-mono text-xs text-[color:var(--foreground)]"
-                  title={focusedHotspot?.file_path ?? ""}
-                >
-                  {focusedHotspot?.file_path ?? "--"}
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs uppercase tracking-[0.2em]">Score</span>
-                <span className="text-[color:var(--foreground)]">
-                  {formatScore(focusedHotspot?.hotspot_score ?? null)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs uppercase tracking-[0.2em]">
-                  Touches
-                </span>
-                <span className="text-[color:var(--foreground)]">
-                  {formatNumber(focusedHotspot?.touches ?? 0)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs uppercase tracking-[0.2em]">Churn</span>
-                <span className="text-[color:var(--foreground)]">
-                  {formatNumber(focusedHotspot?.churn ?? 0)}
-                </span>
+            <div>
+              <span className="text-xs uppercase tracking-[0.2em]">
+                Focus file
+              </span>
+              <div
+                className="truncate-1 mt-2 font-mono text-xs text-[color:var(--foreground)]"
+                title={focusedHotspot?.file_path ?? ""}
+              >
+                {focusedHotspot?.file_path ?? "--"}
               </div>
             </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs uppercase tracking-[0.2em]">Score</span>
+              <span className="text-[color:var(--foreground)]">
+                {formatScore(focusedHotspot?.hotspot_score ?? null)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs uppercase tracking-[0.2em]">
+                Touches
+              </span>
+              <span className="text-[color:var(--foreground)]">
+                {formatNumber(focusedHotspot?.touches ?? 0)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs uppercase tracking-[0.2em]">Churn</span>
+              <span className="text-[color:var(--foreground)]">
+                {formatNumber(focusedHotspot?.churn ?? 0)}
+              </span>
+            </div>
+          </div>
         </div>
       </section>
 
