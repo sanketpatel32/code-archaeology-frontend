@@ -1,6 +1,6 @@
 "use client";
 
-import { hierarchy, treemap, treemapSquarify } from "d3";
+import { hierarchy, treemap, treemapSquarify, type HierarchyRectangularNode } from "d3";
 import { useMemo, useRef, useState } from "react";
 
 export type TreemapNode = {
@@ -44,13 +44,13 @@ export default function TreemapChart({
       .sum((node) => node.value ?? 0)
       .sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
 
-    treemap<TreemapNode>()
+    const layout = treemap<TreemapNode>()
       .size([width, height])
       .paddingInner(6)
       .paddingOuter(2)
       .tile(treemapSquarify)(root);
 
-    return root.leaves().map((leaf, index) => {
+    return (layout.leaves() as HierarchyRectangularNode<TreemapNode>[]).map((leaf, index) => {
       const path =
         leaf.data.path ??
         leaf
@@ -65,10 +65,10 @@ export default function TreemapChart({
         path,
         value: leaf.value ?? 0,
         depth: leaf.depth,
-        x0: leaf.x0,
-        y0: leaf.y0,
-        x1: leaf.x1,
-        y1: leaf.y1,
+        x0: leaf.x0 ?? 0,
+        y0: leaf.y0 ?? 0,
+        x1: leaf.x1 ?? 0,
+        y1: leaf.y1 ?? 0,
         color: TREEMAP_COLORS[paletteIndex],
       };
     });
@@ -123,9 +123,8 @@ export default function TreemapChart({
               transform={`translate(${leaf.x0} ${leaf.y0})`}
             >
               <rect
-                className={`treemap-rect ${
-                  isDimmed ? "treemap-rect-dim" : ""
-                } ${isActive || isSelected ? "treemap-rect-active" : ""}`}
+                className={`treemap-rect ${isDimmed ? "treemap-rect-dim" : ""
+                  } ${isActive || isSelected ? "treemap-rect-active" : ""}`}
                 width={tileWidth}
                 height={tileHeight}
                 rx={10}

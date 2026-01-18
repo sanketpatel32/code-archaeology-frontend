@@ -146,7 +146,7 @@ export default function TimelinePage() {
         `/api/repositories/${state.repoId}/timeline-branches?weeks=24&limit=6`,
       ),
     enabled: Boolean(state.repoId),
-    placeholderData: (previous) => previous ?? null,
+    placeholderData: (previous) => previous,
   });
 
   const branchTimeline = branchData?.branches ?? [];
@@ -599,9 +599,8 @@ export default function TimelinePage() {
             {branchTimeline.map((branch) => (
               <button
                 key={branch.name}
-                className={`toggle-button max-w-[160px] truncate-1 ${
-                  branchFocus === branch.name ? "toggle-active" : ""
-                }`}
+                className={`toggle-button max-w-[160px] truncate-1 ${branchFocus === branch.name ? "toggle-active" : ""
+                  }`}
                 type="button"
                 onClick={() => setBranchFocus(branch.name)}
                 title={branch.name}
@@ -686,36 +685,32 @@ export default function TimelinePage() {
           </div>
           <div className="toggle-group">
             <button
-              className={`toggle-button ${
-                pulseMetric === "commits" ? "toggle-active" : ""
-              }`}
+              className={`toggle-button ${pulseMetric === "commits" ? "toggle-active" : ""
+                }`}
               type="button"
               onClick={() => setPulseMetric("commits")}
             >
               Commits
             </button>
             <button
-              className={`toggle-button ${
-                pulseMetric === "churn" ? "toggle-active" : ""
-              }`}
+              className={`toggle-button ${pulseMetric === "churn" ? "toggle-active" : ""
+                }`}
               type="button"
               onClick={() => setPulseMetric("churn")}
             >
               Churn
             </button>
             <button
-              className={`toggle-button ${
-                pulseMetric === "additions" ? "toggle-active" : ""
-              }`}
+              className={`toggle-button ${pulseMetric === "additions" ? "toggle-active" : ""
+                }`}
               type="button"
               onClick={() => setPulseMetric("additions")}
             >
               Additions
             </button>
             <button
-              className={`toggle-button ${
-                pulseMetric === "deletions" ? "toggle-active" : ""
-              }`}
+              className={`toggle-button ${pulseMetric === "deletions" ? "toggle-active" : ""
+                }`}
               type="button"
               onClick={() => setPulseMetric("deletions")}
             >
@@ -756,9 +751,8 @@ export default function TimelinePage() {
               (key) => (
                 <button
                   key={key}
-                  className={`toggle-button ${
-                    classificationMetric === key ? "toggle-active" : ""
-                  }`}
+                  className={`toggle-button ${classificationMetric === key ? "toggle-active" : ""
+                    }`}
                   type="button"
                   onClick={() => setClassificationMetric(key)}
                 >
@@ -817,8 +811,8 @@ export default function TimelinePage() {
             <div className="mt-3 text-xs text-[color:var(--muted)]">
               {activeClassification
                 ? `${CLASSIFICATION_LABELS[activeClassification.key]} holds ${Math.round(
-                    activeClassification.percent,
-                  )}% (${formatNumber(activeClassification.count)} commits)`
+                  activeClassification.percent,
+                )}% (${formatNumber(activeClassification.count)} commits)`
                 : "Select a type to see its distribution share."}
             </div>
             <div className="mt-4 metric-list">
